@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Story Studio — Histoires & Chansons IA</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+        --bg: #0a0a0f; --panel: #14141c; --panel-2: #1c1c26; --border: #2a2a38;
+        --ink: #f0f0f5; --ink-dim: #8888a0; --ink-faint: #55556a;
+        --accent: #ff2d6f; --accent-2: #7b2dff; --success: #2dd47e; --error: #ff4757; --warn: #ffa502;
+        --radius: 14px;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--ink); min-height: 100vh;
+        padding: 1.2rem 1rem 6rem; font-size: 15px; line-height: 1.5;
+        max-width: 900px; margin: 0 auto;
+        background-image: radial-gradient(circle at 20% 0%, rgba(255,45,111,0.08), transparent 50%),
+                          radial-gradient(circle at 80% 100%, rgba(123,45,255,0.08), transparent 50%);
+    }
+    header { margin-bottom: 1.5rem; text-align: center; }
+    h1 {
+        font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.3rem;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .subtitle { font-size: 0.8rem; color: var(--ink-dim); }
+
+    .toast {
+        position: fixed; top: 1.5rem; left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: var(--panel); color: var(--ink);
+        border: 1px solid var(--border);
+        padding: 0.85rem 1.4rem; border-radius: 10px;
+        font-size: 0.85rem; font-weight: 500;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        z-index: 1000; opacity: 0;
+        transition: transform 0.35s ease, opacity 0.35s ease;
+        max-width: 90vw; text-align: center;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--error); }
+    .toast.warn { border-color: var(--warn); }
+
+    .mode-switch {
+        display: flex; gap: 0.5rem; margin-bottom: 1rem;
+        background: var(--panel); padding: 0.4rem; border-radius: 14px;
+        border: 1px solid var(--border);
+    }
+    .mode-btn {
+        flex: 1; padding: 0.85rem; border-radius: 10px; border: none;
+        background: transparent; color: var(--ink-dim);
+        font-family: inherit; font-size: 0.85rem; font-weight: 700;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .mode-btn.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; box-shadow: 0 4px 16px rgba(255,45,111,0.3);
+    }
+
+    .section {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden;
+    }
+    .section-header {
+        padding: 0.95rem 1.1rem; cursor: pointer; user-select: none;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .section-header:active { background: var(--panel-2); }
+    .section-title {
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em;
+        color: var(--ink-dim); font-weight: 700;
+    }
+    .section-title .badge {
+        display: inline-block; margin-left: 0.4rem; padding: 0.15rem 0.5rem;
+        background: var(--accent); color: #fff; border-radius: 10px;
+        font-size: 0.62rem; letter-spacing: 0.05em;
+    }
+    .section-title .badge.off { background: var(--ink-faint); }
+    .section-header .chevron { font-size: 0.7rem; color: var(--ink-faint); transition: transform 0.2s; }
+    .section.open .section-header .chevron { transform: rotate(180deg); }
+    .section-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .section.open .section-body { max-height: 6000px; }
+    .section-content { padding: 0 1.1rem 1.1rem; }
+
+    .api-panel {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: 1rem;
+        transition: border-color 0.3s;
+    }
+    .api-panel.ok { border-color: var(--success); }
+    .api-key-input {
+        width: 100%; padding: 0.85rem 1rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 0.85rem; margin-bottom: 0.6rem;
+    }
+    .api-key-input:focus { outline: none; border-color: var(--accent); }
+    .api-save-btn {
+        width: 100%; padding: 0.8rem 1.2rem; border-radius: 10px; border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; font-size: 0.9rem; font-weight: 700; font-family: inherit;
+        cursor: pointer; margin-bottom: 0.6rem;
+    }
+    .api-save-btn:active { transform: scale(0.98); }
+    .api-status-line {
+        font-size: 0.75rem; padding: 0.55rem 0.85rem; border-radius: 8px;
+        display: flex; align-items: center; gap: 0.5rem;
+        background: var(--panel-2); color: var(--ink-dim); transition: all 0.3s;
+    }
+    .api-status-line.ok { background: rgba(45,212,126,0.12); color: var(--success); font-weight: 600; }
+    .api-status-line .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--ink-faint); flex-shrink: 0;
+    }
+    .api-status-line.ok .status-dot { background: var(--success); }
+    .api-hint { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem; }
+    .api-hint a { color: var(--accent); text-decoration: underline; }
+
+    .wake-status {
+        font-size: 0.72rem; padding: 0.5rem 0.7rem; border-radius: 8px; margin-top: 0.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--panel-2); color: var(--ink-dim); flex-wrap: wrap; gap: 0.4rem;
+    }
+    .wake-status.active { background: rgba(45,212,126,0.12); color: var(--success); }
+    .wake-status.warn { background: rgba(255,165,2,0.12); color: var(--warn); }
+    .wake-status button {
+        background: transparent; border: 1px solid currentColor; color: inherit;
+        padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.68rem;
+        cursor: pointer; font-family: inherit;
+    }
+
+    .script-input {
+        width: 100%; padding: 1rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.92rem; min-height: 120px; resize: vertical;
+        line-height: 1.55;
+    }
+    .script-input:focus { outline: none; border-color: var(--accent); }
+    .script-hint { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem; line-height: 1.5; }
+    .script-presets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
+    .script-preset {
+        padding: 0.4rem 0.75rem; border-radius: 20px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+    }
+    .script-preset:active { transform: scale(0.96); }
+    .script-preset:hover { border-color: var(--accent); color: var(--accent); }
+
+    .control-row { margin-bottom: 0.9rem; }
+    .control-row:last-child { margin-bottom: 0; }
+    .control-label {
+        display: block; font-size: 0.72rem; color: var(--ink-dim);
+        margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;
+        font-weight: 700;
+    }
+    select, input[type="text"], input[type="number"] {
+        width: 100%; padding: 0.75rem 0.9rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.88rem;
+    }
+    select {
+        -webkit-appearance: none; appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23f0f0f5' d='M0 0l5 6 5-6z'/></svg>");
+        background-repeat: no-repeat; background-position: right 0.9rem center;
+        background-size: 10px;
+    }
+    select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+    .toggle-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.7rem 0; border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row .toggle-info { flex: 1; }
+    .toggle-row .toggle-name { font-size: 0.85rem; font-weight: 600; }
+    .toggle-row .toggle-desc { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.1rem; }
+    .toggle-switch {
+        position: relative; width: 46px; height: 26px; flex-shrink: 0;
+        background: var(--panel-2); border-radius: 14px; cursor: pointer;
+        transition: background 0.25s; border: 1px solid var(--border);
+    }
+    .toggle-switch::after {
+        content: ''; position: absolute; top: 2px; left: 2px;
+        width: 20px; height: 20px; background: var(--ink-dim);
+        border-radius: 50%; transition: transform 0.25s, background 0.25s;
+    }
+    .toggle-switch.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+    .toggle-switch.on::after { transform: translateX(20px); background: #fff; }
+
+    .btn-primary {
+        width: 100%; padding: 1.15rem; border-radius: var(--radius); border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; font-size: 1rem; font-weight: 700; font-family: inherit;
+        cursor: pointer; margin-bottom: 1rem; letter-spacing: 0.02em;
+        box-shadow: 0 8px 24px rgba(255,45,111,0.25);
+    }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+    .btn-stop {
+        width: 100%; padding: 0.85rem; border-radius: var(--radius);
+        border: 1px solid var(--error); background: transparent;
+        color: var(--error); font-size: 0.85rem; font-weight: 700;
+        font-family: inherit; cursor: pointer; margin-bottom: 1rem; display: none;
+    }
+    .btn-stop.visible { display: block; }
+
+    .queue { margin-top: 1rem; }
+    .queue-summary {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 10px; padding: 0.75rem 0.95rem; margin-bottom: 0.6rem;
+        font-size: 0.78rem; display: flex; justify-content: space-between;
+        align-items: center; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .queue-summary .progress-text { color: var(--ink); font-weight: 700; }
+    .queue-summary .eta-text { color: var(--ink-dim); }
+
+    .queue-item {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.7rem 0.85rem; border-radius: 10px;
+        border: 1px solid var(--border); margin-bottom: 0.4rem;
+        background: var(--panel); transition: border-color 0.3s, opacity 0.3s;
+        font-size: 0.82rem;
+    }
+    .queue-item.pending { opacity: 0.55; }
+    .queue-item.creating { border-color: var(--warn); }
+    .queue-item.processing { border-color: var(--accent); }
+    .queue-item.done { border-color: var(--success); }
+    .queue-item.failed { border-color: var(--error); }
+    .queue-item .q-icon { font-size: 1rem; width: 1.5rem; text-align: center; flex-shrink: 0; }
+    .queue-item .q-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-item .q-style {
+        font-size: 0.68rem; color: var(--accent); padding: 0.15rem 0.45rem;
+        background: rgba(255,45,111,0.1); border-radius: 6px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 35%;
+    }
+    .queue-item .q-status { font-size: 0.72rem; color: var(--ink-dim); flex-shrink: 0; }
+
+    .gallery { margin-top: 1.5rem; }
+    .gallery-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.9rem;
+    }
+    .gallery-item {
+        border-radius: var(--radius); overflow: hidden;
+        border: 1px solid var(--border); background: #000;
+        animation: fadeIn 0.5s ease;
+    }
+    .gallery-item video { width: 100%; display: block; aspect-ratio: 9/16; object-fit: cover; }
+    .gallery-item .g-caption {
+        padding: 0.5rem 0.7rem; background: var(--panel);
+        font-size: 0.7rem; color: var(--ink-dim);
+        display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;
+    }
+    .gallery-item .g-style { color: var(--accent); font-weight: 600; font-size: 0.65rem; }
+    .gallery-item .g-download {
+        background: transparent; border: 1px solid var(--border); color: var(--ink);
+        padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem;
+        cursor: pointer; font-family: inherit; text-decoration: none;
+    }
+    .gallery-actions {
+        display: flex; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap;
+    }
+    .gallery-actions button {
+        flex: 1; min-width: 140px; padding: 0.7rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .gallery-actions button:active { transform: scale(0.98); }
+
+    .status-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: var(--panel); border-top: 1px solid var(--border);
+        color: var(--ink); padding: 0.75rem 1rem;
+        font-size: 0.78rem; display: flex; align-items: center; gap: 0.6rem;
+        transform: translateY(100%); transition: transform 0.3s;
+        z-index: 100; backdrop-filter: blur(10px);
+    }
+    .status-bar.visible { transform: translateY(0); }
+    .status-bar .spinner {
+        width: 12px; height: 12px; border: 2px solid rgba(255,45,111,0.3);
+        border-top-color: var(--accent); border-radius: 50%;
+        animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .hidden { display: none !important; }
+    #noSleepCanvas, #noSleepVideo { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1; }
+
+    .capcut-guide {
+        background: linear-gradient(135deg, rgba(45,212,126,0.1), rgba(123,45,255,0.1));
+        border: 1px solid var(--success); border-radius: 12px;
+        padding: 1rem; margin-top: 1rem; font-size: 0.8rem; line-height: 1.6;
+    }
+    .capcut-guide h3 { font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--success); }
+    .capcut-guide ol { margin-left: 1.2rem; }
+    .capcut-guide li { margin-bottom: 0.3rem; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>📖 Story Studio 🎵</h1>
+    <p class="subtitle">Histoires & chansons pour enfants, générées par IA</p>
+</header>
+
+<div class="mode-switch">
+    <button class="mode-btn active" id="mode-story">📖 Histoire</button>
+    <button class="mode-btn" id="mode-song">🎵 Chanson enfant</button>
+</div>
+
+<div class="api-panel" id="api-panel">
+    <input type="password" class="api-key-input" id="api-key-input"
+           placeholder="Collez votre clé API ici (sk-...)" autocomplete="off" spellcheck="false">
+    <button type="button" class="api-save-btn" id="api-save-btn">Enregistrer la clé</button>
+    <div class="api-status-line" id="api-status-line">
+        <span class="status-dot"></span>
+        <span id="api-status-text">Aucune clé API enregistrée</span>
+    </div>
+    <div class="api-hint">
+        Clé gratuite sur <a href="https://platform.agnes-ai.com" target="_blank">platform.agnes-ai.com</a>
+    </div>
+    <div class="wake-status" id="wake-status">
+        <span id="wake-status-text">💤 Veille automatique</span>
+        <button type="button" id="wake-toggle-btn">Garder l'écran allumé</button>
+    </div>
+</div>
+
+<div id="story-mode-content">
+
+<div class="section open" id="section-story-input">
+    <div class="section-header" data-toggle="section-story-input">
+        <span class="section-title">📝 Ton histoire / idée <span class="badge">obligatoire</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <textarea class="script-input" id="story-input"
+                placeholder="Écris ton histoire complète, ou juste une idée."></textarea>
+            <div class="script-presets" id="story-presets"></div>
+            <div class="script-hint">
+                💡 Tu peux écrire toute l’histoire, ou juste une idée : l’IA la développera.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-story-type">
+    <div class="section-header" data-toggle="section-story-type">
+        <span class="section-title">🎭 Type d'histoire</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Genre</label>
+                <select id="story-genre">
+                    <option value="conte">📖 Conte pour enfants</option>
+                    <option value="motivation">💪 Motivation</option>
+                    <option value="aventure">🌍 Aventure</option>
+                    <option value="mystere">😱 Mystère</option>
+                    <option value="philo">🎭 Philosophique</option>
+                    <option value="sf">🚀 Science-fiction</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Durée</label>
+                <select id="story-duration">
+                    <option value="6">30 secondes (3 scènes)</option>
+                    <option value="12" selected>1 minute (6 scènes)</option>
+                    <option value="24">2 minutes (12 scènes)</option>
+                    <option value="36">3 minutes (18 scènes)</option>
+                    <option value="60">5 minutes (30 scènes)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<div id="song-mode-content" class="hidden">
+
+<div class="section open" id="section-song-input">
+    <div class="section-header" data-toggle="section-song-input">
+        <span class="section-title">🎵 Thème de la chanson <span class="badge">obligatoire</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <textarea class="script-input" id="song-input"
+                placeholder="Donne un thème, ou colle tes propres paroles."></textarea>
+            <div class="script-presets" id="song-presets"></div>
+            <div class="script-hint">
+                💡 L’IA peut écrire les paroles, ou tu peux les écrire toi-même.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-song-type">
+    <div class="section-header" data-toggle="section-song-type">
+        <span class="section-title">🎼 Type de chanson</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Style musical</label>
+                <select id="song-style">
+                    <option value="joyeuse">🎉 Joyeuse et rythmée</option>
+                    <option value="douce">🌙 Douce et calme (berceuse)</option>
+                    <option value="comptine">🎵 Comptine traditionnelle</option>
+                    <option value="pop">🎤 Pop enfant</option>
+                    <option value="aventure">🚀 Aventure épique</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Durée</label>
+                <select id="song-duration">
+                    <option value="6">30 secondes (3 scènes)</option>
+                    <option value="12" selected>1 minute (6 scènes)</option>
+                    <option value="18">1,5 minute (9 scènes)</option>
+                    <option value="24">2 minutes (12 scènes)</option>
+                    <option value="36">3 minutes (18 scènes)</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Interprétation</label>
+                <select id="song-performance">
+                    <option value="chant">🎤 Voix qui chante (avec mélodie)</option>
+                    <option value="recit">🎙️ Voix qui récite en rythme</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<div class="section" id="section-voice">
+    <div class="section-header" data-toggle="section-voice">
+        <span class="section-title">🎙️ Voix off <span class="badge off" id="voice-badge">off</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <div class="toggle-name">Activer la voix</div>
+                    <div class="toggle-desc">Le texte est lu ou chanté automatiquement</div>
+                </div>
+                <div class="toggle-switch on" id="voice-toggle"></div>
+            </div>
+            <div class="control-row" style="margin-top:0.8rem;">
+                <label class="control-label">Voix</label>
+                <select id="voice-select"></select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Vitesse</label>
+                <select id="voice-rate">
+                    <option value="0.8">Lente (0.8x)</option>
+                    <option value="0.95" selected>Naturelle (0.95x)</option>
+                    <option value="1.1">Rapide (1.1x)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-music">
+    <div class="section-header" data-toggle="section-music">
+        <span class="section-title">🎶 Musique <span class="badge off" id="music-badge">off</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <div class="toggle-name">Activer la musique</div>
+                    <div class="toggle-desc">Nappe sonore générée en direct</div>
+                </div>
+                <div class="toggle-switch on" id="music-toggle"></div>
+            </div>
+            <div class="control-row" style="margin-top:0.8rem;">
+                <label class="control-label">Ambiance</label>
+                <select id="music-mood">
+                    <option value="joyeux">🎉 Joyeux</option>
+                    <option value="doux">🌙 Doux / Berceuse</option>
+                    <option value="epique">⚔️ Épique</option>
+                    <option value="magique">✨ Magique</option>
+                    <option value="aventure">🌍 Aventure</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-visual">
+    <div class="section-header" data-toggle="section-visual">
+        <span class="section-title">🎨 Style visuel</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Style des images</label>
+                <select id="visual-style">
+                    <option value="auto">🎲 Automatique (surprenant)</option>
+                    <option value="enfant">🧸 Enfant / Cartoon pastel</option>
+                    <option value="conte">📚 Livre illustré</option>
+                    <option value="aquarelle">🎨 Aquarelle douce</option>
+                    <option value="3d">✨ 3D style Pixar</option>
+                    <option value="magique">🦄 Magique / Féérique</option>
+                    <option value="cinema">🎬 Cinématique</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Format</label>
+                <select id="visual-format">
+                    <option value="portrait" selected>📱 Portrait 9:16 (TikTok / Reels)</option>
+                    <option value="paysage">🖥️ Paysage 16:9 (YouTube)</option>
+                    <option value="carre">⬛ Carré 1:1 (Instagram)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="btn-primary" id="generate-btn" disabled>
+    ✨ Générer ma vidéo
+</button>
+
+<button type="button" class="btn-stop" id="stop-btn">
+    ⏹ Arrêter
+</button>
+
+<div class="queue" id="queue" style="display:none;"></div>
+
+<div class="gallery" id="gallery" style="display:none;">
+    <div class="section-title" style="margin-bottom:0.8rem;">🎬 Tes scènes</div>
+    <div class="gallery-actions">
+        <button id="export-zip">📦 Exporter en ZIP</button>
+        <button id="download-all">⬇️ Télécharger tout</button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+
+    <div class="capcut-guide">
+        <h3>📱 Comment monter dans CapCut</h3>
+        <ol>
+            <li>Ouvre <strong>CapCut</strong> → <strong>Nouveau projet</strong></li>
+            <li>Importe <strong>toutes les vidéos</strong> dans l’ordre</li>
+            <li>Ajoute la <strong>voix off</strong> et la <strong>musique</strong></li>
+            <li>Appuie sur <strong>Exporter</strong> → ta vidéo est prête 🎉</li>
+        </ol>
+    </div>
+</div>
+
+<div class="status-bar" id="status-bar">
+    <div class="spinner"></div>
+    <span id="status-text">Préparation…</span>
+</div>
+
+<div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✓</span>
+    <span id="toast-text">Message</span>
+</div>
+
+<canvas id="noSleepCanvas" width="2" height="2"></canvas>
+<video id="noSleepVideo" playsinline muted loop></video><script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════
+const API_BASE = 'https://apihub.agnes-ai.com/v1';
+const POLL_BASE = 'https://apihub.agnes-ai.com/agnesapi';
+const MODEL_VIDEO = 'agnes-video-v2.0';
+const FRAME_RATE = 24;
+const POLL_INTERVAL_SEC = 8;
+const MAX_POLL_ATTEMPTS = 100;
+const CREATE_INTERVAL_MS = 55000;
+const API_KEY_STORAGE = 'agnes_api_key';
+const WAKE_LOCK_PREF = 'agnes_wakelock_enabled';
+const MAX_VISIBLE_QUEUE = 50;
+
+// ══════════════════════════════════════════════════════════════════
+// ÉTAT GLOBAL
+// ══════════════════════════════════════════════════════════════════
+const state = {
+    mode: 'story',
+    isRunning: false,
+    stopRequested: false,
+    queue: [],
+    completed: 0,
+    failed: 0,
+    durationFrames: 241,
+    sceneCount: 6,
+    voiceEnabled: true,
+    musicEnabled: true,
+    selectedVoice: null,
+    voiceRate: 0.95,
+    musicMood: 'joyeux',
+    visualStyle: 'auto',
+    visualFormat: 'portrait',
+    storyGenre: 'conte',
+    songStyle: 'joyeuse',
+    songPerformance: 'chant',
+    generatedScenes: [],
+    generatedNarration: null
+};
+
+// ══════════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════════
+let toastTimeout = null;
+function showToast(message, type = 'success', duration = 2500) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.classList.remove('visible', 'success', 'error', 'warn');
+    void toast.offsetWidth;
+    const icons = { success: '✓', error: '✕', warn: '⚠' };
+    document.getElementById('toast-icon').textContent = icons[type] || '✓';
+    document.getElementById('toast-text').textContent = message;
+    toast.classList.add(type);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('visible'), duration);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UTILITAIRES
+// ══════════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function log(msg) { console.log('[StoryStudio] ' + msg); }
+function setStatus(text) {
+    const bar = document.getElementById('status-bar');
+    const txt = document.getElementById('status-text');
+    if (!bar || !txt) return;
+    if (text) { bar.classList.add('visible'); txt.textContent = text; }
+    else bar.classList.remove('visible');
+}
+function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+function formatEta(seconds) {
+    if (seconds < 60) return Math.round(seconds) + 's';
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return m + 'm' + (s > 0 ? ' ' + s + 's' : '');
+}
+function getApiKey() {
+    try { return (localStorage.getItem(API_KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// WAKE LOCK
+// ══════════════════════════════════════════════════════════════════
+let wakeLockSentinel = null;
+let wakeLockEnabled = false;
+let canvasStream = null;
+let canvasInterval = null;
+
+function isWakeLockSupported() {
+    return 'wakeLock' in navigator && typeof navigator.wakeLock.request === 'function';
+}
+async function requestWakeLockAPI() {
+    if (!isWakeLockSupported()) return false;
+    try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; updateWakeStatus(); });
+        return true;
+    } catch (e) { return false; }
+}
+async function releaseWakeLockAPI() {
+    if (wakeLockSentinel) { try { await wakeLockSentinel.release(); } catch (e) {} wakeLockSentinel = null; }
+}
+function startCanvasStream() {
+    if (canvasStream) return true;
+    try {
+        const canvas = document.getElementById('noSleepCanvas');
+        const video = document.getElementById('noSleepVideo');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 2, 2);
+        if (typeof canvas.captureStream !== 'function') return false;
+        canvasStream = canvas.captureStream(1);
+        let toggle = false;
+        canvasInterval = setInterval(() => {
+            toggle = !toggle;
+            ctx.fillStyle = toggle ? '#000' : '#010101';
+            ctx.fillRect(0, 0, 2, 2);
+        }, 1000);
+        video.srcObject = canvasStream; video.muted = true; video.playsInline = true;
+        video.play().catch(() => {});
+        return true;
+    } catch (e) { return false; }
+}
+function stopCanvasStream() {
+    if (canvasInterval) { clearInterval(canvasInterval); canvasInterval = null; }
+    const video = document.getElementById('noSleepVideo');
+    if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
+    if (canvasStream) { try { canvasStream.getTracks().forEach(t => t.stop()); } catch (e) {} canvasStream = null; }
+}
+async function activateWakeLock() {
+    let success = false;
+    if (isWakeLockSupported()) success = await requestWakeLockAPI();
+    if (!success) success = startCanvasStream();
+    if (!success && !canvasStream) success = startCanvasStream();
+    return success;
+}
+async function deactivateWakeLock() { await releaseWakeLockAPI(); stopCanvasStream(); }
+function updateWakeStatus() {
+    const el = document.getElementById('wake-status');
+    const txt = document.getElementById('wake-status-text');
+    const btn = document.getElementById('wake-toggle-btn');
+    if (!el) return;
+    el.classList.remove('active', 'warn');
+    const hasAny = isWakeLockSupported() || (document.getElementById('noSleepCanvas')?.captureStream);
+    if (!hasAny) { el.classList.add('warn'); txt.textContent = '⚠️ Non supporté'; btn.style.display = 'none'; return; }
+    btn.style.display = 'inline-block';
+    const isActive = wakeLockSentinel !== null || canvasStream !== null;
+    if (wakeLockEnabled && isActive) {
+        el.classList.add('active'); txt.textContent = '✅ Écran allumé'; btn.textContent = 'Désactiver';
+    } else if (wakeLockEnabled) {
+        el.classList.add('warn'); txt.textContent = '⏳ En attente'; btn.textContent = 'Désactiver';
+    } else {
+        txt.textContent = '💤 Veille auto'; btn.textContent = 'Garder l\'écran allumé';
+    }
+}
+async function toggleWakeLock() {
+    if (wakeLockEnabled) {
+        wakeLockEnabled = false; await deactivateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '0'); } catch (e) {}
+        showToast('Veille auto réactivée', 'warn');
+    } else {
+        wakeLockEnabled = true;
+        const ok = await activateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '1'); } catch (e) {}
+        showToast(ok ? 'Écran restera allumé' : 'Activez manuellement', ok ? 'success' : 'warn');
+    }
+    updateWakeStatus();
+}
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && wakeLockEnabled) {
+        await activateWakeLock(); updateWakeStatus();
+    }
+});
+async function ensureWakeLockActive() {
+    if (!wakeLockEnabled) return;
+    if (wakeLockSentinel === null && canvasStream === null) {
+        await activateWakeLock(); updateWakeStatus();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CLÉ API
+// ══════════════════════════════════════════════════════════════════
+function saveApiKey() {
+    const input = document.getElementById('api-key-input');
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key) {
+        try { localStorage.removeItem(API_KEY_STORAGE); } catch (e) {}
+        updateApiPanel(); showToast('Clé supprimée', 'warn'); return;
+    }
+    if (!key.startsWith('sk-')) {
+        if (!confirm('La clé ne commence pas par "sk-". Sauvegarder quand même ?')) return;
+    }
+    try { localStorage.setItem(API_KEY_STORAGE, key); updateApiPanel(); showToast('Clé enregistrée ✓', 'success'); input.blur(); }
+    catch (e) { showToast('Erreur', 'error'); }
+}
+function updateApiPanel() {
+    const panel = document.getElementById('api-panel');
+    const input = document.getElementById('api-key-input');
+    const statusLine = document.getElementById('api-status-line');
+    const statusText = document.getElementById('api-status-text');
+    const key = getApiKey();
+    if (!panel) return;
+    if (key) {
+        panel.classList.add('ok'); statusLine.classList.add('ok');
+        statusText.textContent = 'Clé active · ' + key.slice(0, 8) + '…' + key.slice(-4);
+        input.value = key; input.placeholder = '';
+    } else {
+        panel.classList.remove('ok'); statusLine.classList.remove('ok');
+        statusText.textContent = 'Aucune clé API enregistrée';
+        input.value = ''; input.placeholder = 'Collez votre clé API ici (sk-...)';
+    }
+    updateGenerateBtn();
+}
+function updateGenerateBtn() {
+    const btn = document.getElementById('generate-btn');
+    if (!btn) return;
+    const hasKey = !!getApiKey();
+    let hasInput = false;
+    if (state.mode === 'story') {
+        hasInput = document.getElementById('story-input').value.trim().length > 0;
+    } else {
+        hasInput = document.getElementById('song-input').value.trim().length > 0;
+    }
+    btn.disabled = !hasInput || !hasKey || state.isRunning;
+    if (state.isRunning) {
+        btn.textContent = '✨ Génération… (' + (state.completed + state.failed) + '/' + state.queue.length + ')';
+    } else if (!hasKey) {
+        btn.textContent = 'Ajoutez votre clé API';
+    } else if (!hasInput) {
+        btn.textContent = state.mode === 'story' ? '✍️ Écrivez votre histoire' : '🎵 Donnez un thème';
+    } else {
+        btn.textContent = '✨ Générer ma vidéo (' + state.sceneCount + ' scènes)';
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VOIX OFF
+// ══════════════════════════════════════════════════════════════════
+let availableVoices = [];
+function loadVoices() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    availableVoices = voices;
+    const select = document.getElementById('voice-select');
+    if (!select) return;
+    select.innerHTML = voices.map((v, i) =>
+        '<option value="' + i + '">' + esc(v.name) + ' (' + v.lang + ')</option>'
+    ).join('');
+    const frIndex = voices.findIndex(v => v.lang.startsWith('fr'));
+    if (frIndex >= 0) {
+        select.value = frIndex;
+        state.selectedVoice = voices[frIndex];
+    } else if (voices.length) {
+        state.selectedVoice = voices[0];
+    }
+}
+if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 200);
+    setTimeout(loadVoices, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MUSIQUE
+// ══════════════════════════════════════════════════════════════════
+let audioCtx = null;
+let musicNodes = [];
+let musicPlaying = false;
+
+const MUSIC_PRESETS = {
+    joyeux: { freqs: [261.63, 329.63, 392, 523.25], type: 'triangle', lfoRate: 0.4, filterFreq: 1500 },
+    doux: { freqs: [220, 261.63, 329.63], type: 'sine', lfoRate: 0.1, filterFreq: 700 },
+    epique: { freqs: [110, 164.81, 220, 329.63], type: 'sawtooth', lfoRate: 0.15, filterFreq: 800 },
+    magique: { freqs: [293.66, 369.99, 440, 587.33], type: 'sine', lfoRate: 0.2, filterFreq: 1200 },
+    aventure: { freqs: [130.81, 196, 261.63, 392], type: 'triangle', lfoRate: 0.3, filterFreq: 1000 }
+};
+
+function startMusic() {
+    if (musicPlaying) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const preset = MUSIC_PRESETS[state.musicMood] || MUSIC_PRESETS.joyeux;
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.05;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.frequency.value = preset.filterFreq; filter.Q.value = 0.7;
+        filter.connect(masterGain); masterGain.connect(audioCtx.destination);
+        musicNodes = [masterGain, filter];
+        preset.freqs.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            osc.type = preset.type; osc.frequency.value = freq;
+            const oscGain = audioCtx.createGain();
+            oscGain.gain.value = 0.15 / preset.freqs.length;
+            const lfo = audioCtx.createOscillator();
+            lfo.frequency.value = preset.lfoRate * (1 + i * 0.3);
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.value = 0.08;
+            lfo.connect(lfoGain); lfoGain.connect(oscGain.gain);
+            osc.connect(oscGain); oscGain.connect(filter);
+            osc.start(); lfo.start();
+            musicNodes.push(osc, oscGain, lfo, lfoGain);
+        });
+        musicPlaying = true;
+    } catch (e) { log('Erreur musique : ' + e.message); }
+}
+function stopMusic() {
+    if (!musicPlaying) return;
+    try { musicNodes.forEach(n => { try { if (n.stop) n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} }); } catch (e) {}
+    musicNodes = []; musicPlaying = false;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STYLES VISUELS
+// ══════════════════════════════════════════════════════════════════
+const VISUAL_STYLES = {
+    enfant: [
+        'cute cartoon style for children, soft pastel colors, rounded shapes, friendly characters',
+        'colorful kids illustration, big eyes, joyful expressions, simple shapes',
+        'playful children book style, bright colors, adorable characters'
+    ],
+    conte: [
+        'classic fairy tale illustration, warm colors, storybook aesthetic',
+        'enchanted storybook art, magical atmosphere, detailed illustration',
+        'vintage children book illustration, soft warm palette'
+    ],
+    aquarelle: [
+        'soft watercolor painting, gentle colors, paper texture, dreamy',
+        'delicate watercolor illustration, pastel tones, artistic',
+        'loose watercolor style, flowing colors, poetic'
+    ],
+    '3d': [
+        'high-quality 3D animation, Pixar style, subsurface scattering, expressive characters',
+        'cinematic 3D render, soft lighting, cute characters, vibrant',
+        'modern 3D animated film style, detailed textures'
+    ],
+    magique: [
+        'magical fairy tale scene, glowing sparkles, enchanted forest, dreamy',
+        'whimsical magical world, floating lights, mystical atmosphere',
+        'enchanting fantasy illustration, sparkles, warm magical glow'
+    ],
+    cinema: [
+        'cinematic composition, dramatic lighting, film grain, epic scale',
+        'cinematic wide shot, atmospheric, beautiful color grading',
+        'movie-like scene, professional cinematography, shallow depth'
+    ]
+};
+
+const AUTO_STYLES = ['enfant', 'conte', 'aquarelle', '3d', 'magique'];
+
+function pickVisualStyle() {
+    if (state.visualStyle === 'auto') {
+        return randomItem(AUTO_STYLES);
+    }
+    return state.visualStyle;
+}
+
+function buildVisualPrompt() {
+    const styleKey = pickVisualStyle();
+    const styles = VISUAL_STYLES[styleKey] || VISUAL_STYLES.enfant;
+    const base = randomItem(styles);
+    let format = 'vertical 9:16 portrait orientation';
+    if (state.visualFormat === 'paysage') format = 'horizontal 16:9 landscape orientation';
+    if (state.visualFormat === 'carre') format = 'square 1:1 orientation';
+    return base + ', ' + format + ', high quality, beautiful';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DÉCOUPAGE EN SCÈNES
+// ══════════════════════════════════════════════════════════════════
+function splitIntoScenes(text, count) {
+    const clean = text.trim().replace(/\s+/g, ' ');
+    const sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.length > 3);
+    const scenes = [];
+    if (sentences.length >= count) {
+        const perScene = Math.ceil(sentences.length / count);
+        for (let i = 0; i < count; i++) {
+            const start = i * perScene;
+            const end = Math.min(start + perScene, sentences.length);
+            if (start < sentences.length) {
+                scenes.push(sentences.slice(start, end).join(' '));
+            }
+        }
+    } else {
+        const words = clean.split(' ');
+        const perScene = Math.ceil(words.length / count);
+        for (let i = 0; i < count; i++) {
+            const start = i * perScene;
+            const end = Math.min(start + perScene, words.length);
+            if (start < words.length) {
+                scenes.push(words.slice(start, end).join(' '));
+            }
+        }
+    }
+    while (scenes.length < count) {
+        scenes.push(scenes[scenes.length - 1] || 'Suite de l\'histoire');
+    }
+    return scenes.slice(0, count);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PROMPT DE SCÈNE
+// ══════════════════════════════════════════════════════════════════
+function buildScenePrompt(sceneText, sceneIndex, totalScenes, mode) {
+    const visual = buildVisualPrompt();
+    const parts = [];
+    if (mode === 'song') {
+        parts.push('Animated music video scene for a children\'s song.');
+        parts.push('Scene ' + (sceneIndex + 1) + ' of ' + totalScenes + ': "' + sceneText + '"');
+        parts.push('Visual style: ' + visual);
+        parts.push('Joyful, colorful, child-friendly, cute characters, magical atmosphere.');
+        parts.push('Smooth gentle movement, no text, no subtitles, no watermarks.');
+    } else {
+        parts.push('Animated story scene, cinematic storytelling.');
+        parts.push('Scene ' + (sceneIndex + 1) + ' of ' + totalScenes + ': "' + sceneText + '"');
+        parts.push('Visual style: ' + visual);
+        parts.push('Expressive characters, beautiful composition, atmospheric lighting.');
+        parts.push('Smooth motion, storytelling mood, no text, no subtitles, no watermarks.');
+    }
+    return parts.join(' ');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════════════
+async function apiFetch(url, options = {}, label = 'API') {
+    for (let attempt = 0; attempt < 7; attempt++) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        try {
+            const res = await fetch(url, options);
+            if (res.status === 429) {
+                const wait = [15, 30, 45, 60, 90, 120, 180][Math.min(attempt, 6)];
+                log(label + ' : 429, attente ' + wait + 's');
+                setStatus('L\'IA se prépare… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            if (res.status === 503) {
+                const wait = [5, 10, 15, 20, 30, 45][Math.min(attempt, 5)];
+                log(label + ' : 503, attente ' + wait + 's');
+                setStatus('Préparation… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            return res;
+        } catch (e) {
+            if (e.message === 'Arrêt demandé') throw e;
+            const wait = [3, 5, 8, 12, 20, 30][Math.min(attempt, 5)];
+            log(label + ' : réseau, retry ' + wait + 's');
+            setStatus('Connexion… (' + wait + 's)');
+            await sleep(wait * 1000);
+        }
+    }
+    return fetch(url, options);
+}
+
+async function createVideoTask(prompt) {
+    const body = {
+        model: MODEL_VIDEO,
+        prompt: prompt,
+        num_frames: state.durationFrames,
+        frame_rate: FRAME_RATE
+    };
+    const res = await apiFetch(API_BASE + '/videos', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + getApiKey(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    }, 'Création');
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error('HTTP ' + res.status + ' — ' + err.slice(0, 200));
+    }
+    const data = await res.json();
+    const videoId = data.video_id || data.id || data.task_id;
+    if (!videoId) throw new Error('Pas de video_id retourné');
+    return videoId;
+}
+
+async function pollVideo(videoId, onProgress) {
+    const estimatedSec = 30 + state.durationFrames * 0.5;
+    let remaining = Math.max(20, Math.floor(estimatedSec * 0.7));
+    while (remaining > 0) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        onProgress('Préparation… — ' + remaining + 's');
+        await sleep(1000);
+        remaining--;
+    }
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        if (attempt > 0) {
+            let r = POLL_INTERVAL_SEC;
+            while (r > 0) {
+                if (state.stopRequested) throw new Error('Arrêt demandé');
+                onProgress('Rendu en cours… — ' + r + 's');
+                await sleep(1000);
+                r--;
+            }
+        }
+        const url = POLL_BASE + '?video_id=' + encodeURIComponent(videoId) + '&model_name=' + encodeURIComponent(MODEL_VIDEO);
+        const res = await apiFetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + getApiKey() }
+        }, 'Polling');
+        const d = await res.json();
+        const status = d.status || 'unknown';
+        const progress = d.progress || 0;
+        onProgress('Création… — ' + progress + '%');
+        if (status === 'completed' || status === 'succeeded' || status === 'done') {
+            const videoUrl = (d.metadata && d.metadata.url) || d.url || (d.output && d.output.url);
+            if (!videoUrl) throw new Error('Terminé mais pas d\'URL');
+            return videoUrl;
+        }
+        if (status === 'failed' || status === 'error' || status === 'cancelled') {
+            throw new Error('Échec (' + status + ')');
+        }
+    }
+    throw new Error('Délai maximal dépassé');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FILE
+// ══════════════════════════════════════════════════════════════════
+function renderQueue() {
+    const queueEl = document.getElementById('queue');
+    if (!state.queue.length) { queueEl.style.display = 'none'; return; }
+    queueEl.style.display = 'block';
+    const total = state.queue.length;
+    const done = state.completed + state.failed;
+    const inProgress = state.queue.filter(q => q.status === 'processing').length;
+    const pending = total - done - inProgress;
+    const estGen = 30 + state.durationFrames * 0.5;
+    const eta = pending > 0
+        ? pending * (CREATE_INTERVAL_MS / 1000) + estGen
+        : inProgress * estGen / Math.max(inProgress, 1);
+    let html = '<div class="queue-summary">' +
+        '<span class="progress-text">Progression : ' + done + '/' + total + ' scènes</span>' +
+        '<span class="eta-text">' + (done < total ? '≈ ' + formatEta(eta) + ' restant' : 'Terminé') + '</span>' +
+        '</div>';
+    const visible = state.queue.slice(0, MAX_VISIBLE_QUEUE);
+    const hidden = state.queue.length - visible.length;
+    html += visible.map(item => {
+        let icon = '○', statusText = 'En attente', cls = 'pending';
+        if (item.status === 'creating') { icon = '◐'; statusText = 'Préparation'; cls = 'creating'; }
+        else if (item.status === 'processing') { icon = '◐'; statusText = item.progress || 'En cours'; cls = 'processing'; }
+        else if (item.status === 'done') { icon = '●'; statusText = 'Terminé'; cls = 'done'; }
+        else if (item.status === 'failed') { icon = '✕'; statusText = 'Échec'; cls = 'failed'; }
+        const sceneLabel = 'Scène ' + (item.index + 1);
+        return '<div class="queue-item ' + cls + '">' +
+            '<div class="q-icon">' + icon + '</div>' +
+            '<div class="q-name">' + sceneLabel + '</div>' +
+            '<div class="q-style">' + esc(item.sceneText ? item.sceneText.slice(0, 40) + '…' : '') + '</div>' +
+            '<div class="q-status">' + esc(statusText) + '</div>' +
+        '</div>';
+    }).join('');
+    if (hidden > 0) {
+        html += '<div style="text-align:center;padding:0.5rem;color:var(--ink-dim);font-size:0.75rem;font-style:italic;">… et ' + hidden + ' autre' + (hidden > 1 ? 's' : '') + '</div>';
+    }
+    queueEl.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GALERIE
+// ══════════════════════════════════════════════════════════════════
+function addToGallery(videoUrl, label, sceneText, index) {
+    const galleryEl = document.getElementById('gallery');
+    const galleryGrid = document.getElementById('gallery-grid');
+    galleryEl.style.display = 'block';
+    const el = document.createElement('div');
+    el.className = 'gallery-item';
+    el.innerHTML =
+        '<video controls preload="metadata" muted playsinline loop>' +
+        '<source src="' + videoUrl + '" type="video/mp4">' +
+        '</video>' +
+        '<div class="g-caption">' +
+            '<span>' + esc(label) + '</span>' +
+            '<a class="g-download" href="' + videoUrl + '" download="scene-' + (index + 1) + '.mp4" target="_blank">↓</a>' +
+        '</div>';
+    galleryGrid.appendChild(el);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PIPELINE
+// ══════════════════════════════════════════════════════════════════
+async function createTaskOnly(item) {
+    item.status = 'creating';
+    item.progress = 'Préparation…';
+    renderQueue();
+    const prompt = buildScenePrompt(item.sceneText, item.index, state.queue.length, state.mode);
+    item.prompt = prompt;
+    const videoId = await createVideoTask(prompt);
+    item.videoId = videoId;
+    item.status = 'processing';
+    item.progress = 'En cours…';
+    renderQueue();
+    return videoId;
+}
+
+async function pollTaskAndDisplay(item) {
+    try {
+        const videoUrl = await pollVideo(item.videoId, (prog) => {
+            item.progress = prog; renderQueue();
+        });
+        item.status = 'done';
+        item.videoUrl = videoUrl;
+        item.progress = 'Terminé';
+        state.completed++;
+        state.generatedScenes.push({ index: item.index, url: videoUrl, text: item.sceneText });
+        renderQueue();
+        updateGenerateBtn();
+        addToGallery(videoUrl, 'Scène ' + (item.index + 1), item.sceneText, item.index);
+    } catch (e) {
+        if (e.message === 'Arrêt demandé') {
+            item.status = 'failed'; item.progress = 'Arrêté';
+        } else {
+            log('Scène ' + (item.index + 1) + ' : ' + e.message);
+            item.status = 'failed'; item.progress = 'Échec';
+            state.failed++;
+        }
+        renderQueue();
+        updateGenerateBtn();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// WORKFLOW
+// ══════════════════════════════════════════════════════════════════
+async function startGeneration() {
+    if (state.isRunning) return;
+    const text = state.mode === 'story'
+        ? document.getElementById('story-input').value.trim()
+        : document.getElementById('song-input').value.trim();
+    if (!text) { showToast('Écrivez d\'abord votre texte', 'error'); return; }
+    if (!getApiKey()) { showToast('Ajoutez d\'abord votre clé API', 'error'); return; }
+
+    state.storyGenre = document.getElementById('story-genre').value;
+    state.songStyle = document.getElementById('song-style').value;
+    state.songPerformance = document.getElementById('song-performance').value;
+    state.visualStyle = document.getElementById('visual-style').value;
+    state.visualFormat = document.getElementById('visual-format').value;
+    state.musicMood = document.getElementById('music-mood').value;
+    state.voiceRate = parseFloat(document.getElementById('voice-rate').value);
+    state.selectedVoice = availableVoices[parseInt(document.getElementById('voice-select').value, 10)] || state.selectedVoice;
+
+    const durationSelect = state.mode === 'story'
+        ? document.getElementById('story-duration')
+        : document.getElementById('song-duration');
+    state.sceneCount = parseInt(durationSelect.value, 10);
+
+    state.isRunning = true;
+    state.stopRequested = false;
+    state.completed = 0;
+    state.failed = 0;
+    state.generatedScenes = [];
+
+    const scenes = splitIntoScenes(text, state.sceneCount);
+    log('Découpage : ' + scenes.length + ' scènes');
+
+    state.queue = scenes.map((sceneText, i) => ({
+        index: i,
+        sceneText: sceneText,
+        status: 'pending',
+        progress: null,
+        videoId: null,
+        videoUrl: null,
+        prompt: null
+    }));
+
+    document.getElementById('gallery-grid').innerHTML = '';
+    document.getElementById('gallery').style.display = 'none';
+    document.getElementById('stop-btn').classList.add('visible');
+    document.getElementById('generate-btn').disabled = true;
+
+    await ensureWakeLockActive();
+    if (state.musicEnabled) startMusic();
+
+    renderQueue();
+    updateGenerateBtn();
+
+    const totalStart = Date.now();
+    const pollingTasks = [];
+
+    try {
+        for (let i = 0; i < state.queue.length; i++) {
+            if (state.stopRequested) break;
+            const item = state.queue[i];
+            try {
+                await createTaskOnly(item);
+                pollingTasks.push(pollTaskAndDisplay(item));
+            } catch (e) {
+                if (e.message === 'Arrêt demandé') break;
+                log('Scène ' + (i + 1) + ' échec : ' + e.message);
+                item.status = 'failed'; item.progress = 'Échec';
+                state.failed++;
+                renderQueue();
+                updateGenerateBtn();
+            }
+            if (i < state.queue.length - 1 && !state.stopRequested) {
+                const waitSec = Math.ceil(CREATE_INTERVAL_MS / 1000);
+                for (let r = waitSec; r > 0; r--) {
+                    if (state.stopRequested) break;
+                    setStatus('Respiration… — Scène ' + (i + 2) + '/' + state.queue.length + ' dans ' + r + 's');
+                    await sleep(1000);
+                }
+            }
+        }
+        if (pollingTasks.length > 0) {
+            setStatus('Finalisation…');
+            await Promise.allSettled(pollingTasks);
+        }
+    } catch (e) {
+        log('Erreur globale : ' + e.message);
+    }
+
+    stopMusic();
+
+    const totalElapsed = (Date.now() - totalStart) / 1000;
+    const summary = state.stopRequested
+        ? 'Arrêté — ' + state.completed + '/' + state.queue.length + ' scènes'
+        : '✦ ' + state.completed + '/' + state.queue.length + ' scènes en ' + formatEta(totalElapsed) + ' ✦';
+
+    log(summary);
+    setStatus(summary);
+    await sleep(4000);
+    setStatus(null);
+
+    state.isRunning = false;
+    state.stopRequested = false;
+    document.getElementById('stop-btn').classList.remove('visible');
+    updateGenerateBtn();
+
+    if (state.voiceEnabled && text) {
+        setTimeout(() => speakNarration(text), 500);
+    }
+
+    showToast(state.completed + ' scène' + (state.completed > 1 ? 's' : '') + ' générée' + (state.completed > 1 ? 's' : ''), 'success');
+}
+
+function speakNarration(text) {
+    if (!('speechSynthesis' in window) || !text) return;
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (state.selectedVoice) utter.voice = state.selectedVoice;
+    utter.rate = state.voiceRate;
+    utter.pitch = 1;
+    utter.volume = 1;
+    utter.lang = 'fr-FR';
+    speechSynthesis.speak(utter);
+}
+
+function stopGeneration() {
+    if (!state.isRunning) return;
+    state.stopRequested = true;
+    speechSynthesis.cancel();
+    stopMusic();
+    setStatus('Arrêt en cours…');
+}
+</script><script>
+// ══════════════════════════════════════════════════════════════════
+// PRESETS
+// ══════════════════════════════════════════════════════════════════
+const STORY_PRESETS = [
+    { label: '🐰 Le lapin partageur',
+      text: 'Il était une fois un petit lapin blanc qui adorait ses carottes. Un jour, il rencontra une souris affamée. Le lapin hésita, puis partagea sa plus belle carotte. La souris sourit et lui offrit une graine magique. Le lendemain, un champ entier de carottes avait poussé. Depuis ce jour, le lapin comprit que partager rendait bien plus riche que garder.' },
+    { label: '🐉 Le dragon peureux',
+      text: 'Un jeune dragon avait peur du feu. Tous les autres dragons se moquaient de lui. Un soir, il rencontra une petite fille perdue dans la montagne. Il souffla doucement sur une brindille pour la réchauffer. La brindille s\'alluma. Le dragon découvrit qu\'il n\'avait pas peur du feu, mais de faire mal. Il devint le plus gentil des dragons.' },
+    { label: '🌟 La petite étoile',
+      text: 'Dans le ciel, une petite étoile se sentait trop petite pour briller. Elle regarda les autres étoiles, si grandes, si lumineuses. Un enfant, perdu dans la nuit, leva les yeux et vit justement cette petite étoile. Il lui sourit. L\'étoile comprit alors que même la plus petite lumière peut guider un cœur perdu.' },
+    { label: '💪 Croire en soi',
+      text: 'Chaque matin, tu te lèves avec une chance. Celle de recommencer. Personne n\'est né avec la peur d\'échouer : on nous l\'a apprise. Aujourd\'hui, tu peux décider de la désapprendre. Une petite action. Un petit pas. Un petit courage. Et à la fin de l\'année, tu ne reconnaîtras plus celui que tu étais.' },
+    { label: '🌍 Le voyageur',
+      text: 'Un voyageur marchait depuis des jours. Il cherchait un endroit où il pourrait enfin se poser. Il traversa des montagnes, des rivières, des forêts. Un vieil homme lui demanda ce qu\'il cherchait. Le voyageur répondit : un endroit où je me sentirai chez moi. Le vieil homme sourit : alors arrête de marcher. Tu es déjà arrivé. Le voyageur comprit que ce qu\'il cherchait était en lui.' }
+];
+
+const SONG_PRESETS = [
+    { label: '🐮 Les animaux de la ferme',
+      text: 'Les animaux de la ferme. La vache fait meuh, le cochon fait groin, la poule fait cot-cot, le mouton fait bêê, le canard fait coin-coin, et tous ensemble ils chantent le matin.' },
+    { label: '🎨 Les couleurs',
+      text: 'Les couleurs de l\'arc-en-ciel. Le rouge des fraises, l\'orange des citrouilles, le jaune du soleil, le vert des feuilles, le bleu de la mer, le violet des fleurs, et toutes ensemble elles font un arc-en-ciel.' },
+    { label: '🚂 Le petit train',
+      text: 'Le petit train qui va à l\'école. Il part de la gare, il traverse les champs, il passe sous le pont, il salue les oiseaux, il arrive à l\'école, et il repart le soir.' },
+    { label: '🌙 La berceuse du soir',
+      text: 'La lune se lève doucement, les étoiles s\'allument, le vent souffle doucement, les yeux se ferment, les rêves arrivent, bonne nuit mon petit.' },
+    { label: '🙏 Le mot magique',
+      text: 'Le mot magique qui ouvre les cœurs. Quand je dis merci, le monde sourit. Quand je dis pardon, la colère s\'en va. Quand je dis s\'il te plaît, les amis arrivent. Merci, pardon, s\'il te plaît, trois petits mots pour être heureux.' }
+];
+
+function renderPresets() {
+    const storyContainer = document.getElementById('story-presets');
+    storyContainer.innerHTML = STORY_PRESETS.map((p, i) =>
+        '<div class="script-preset" data-story="' + i + '">' + esc(p.label) + '</div>'
+    ).join('');
+    storyContainer.querySelectorAll('[data-story]').forEach(el => {
+        el.addEventListener('click', () => {
+            const idx = parseInt(el.dataset.story, 10);
+            const preset = STORY_PRESETS[idx];
+            if (!preset) return;
+            document.getElementById('story-input').value = preset.text;
+            updateGenerateBtn();
+            showToast('Exemple appliqué', 'success', 1200);
+        });
+    });
+
+    const songContainer = document.getElementById('song-presets');
+    songContainer.innerHTML = SONG_PRESETS.map((p, i) =>
+        '<div class="script-preset" data-song="' + i + '">' + esc(p.label) + '</div>'
+    ).join('');
+    songContainer.querySelectorAll('[data-song]').forEach(el => {
+        el.addEventListener('click', () => {
+            const idx = parseInt(el.dataset.song, 10);
+            const preset = SONG_PRESETS[idx];
+            if (!preset) return;
+            document.getElementById('song-input').value = preset.text;
+            updateGenerateBtn();
+            showToast('Exemple appliqué', 'success', 1200);
+        });
+    });
+}
+
+async function exportZip() {
+    if (!state.generatedScenes.length) {
+        showToast('Aucune scène à exporter', 'warn');
+        return;
+    }
+    showToast('Préparation du ZIP…', 'success', 1500);
+    try {
+        const zip = new JSZip();
+        for (const scene of state.generatedScenes) {
+            const num = String(scene.index + 1).padStart(2, '0');
+            const resp = await fetch(scene.url);
+            const blob = await resp.blob();
+            zip.file('scene-' + num + '.mp4', blob);
+        }
+        zip.file('LISEZ-MOI.txt',
+            'STORY STUDIO — Instructions de montage\n\n' +
+            '1. Ouvre CapCut\n' +
+            '2. Crée un nouveau projet\n' +
+            '3. Importe les fichiers scene-01.mp4 à scene-XX.mp4 DANS L\'ORDRE\n' +
+            '4. Ajoute ta voix off et ta musique\n' +
+            '5. Exporte en 1080x1920 (portrait) ou 1920x1080 (paysage)\n\n' +
+            'Bonne création !\n'
+        );
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'story-studio-scenes.zip';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('ZIP téléchargé ✓', 'success');
+    } catch (e) {
+        log('Erreur ZIP : ' + e.message);
+        showToast('Erreur lors du ZIP', 'error');
+    }
+}
+
+async function downloadAll() {
+    if (!state.generatedScenes.length) { showToast('Rien à télécharger', 'warn'); return; }
+    showToast('Téléchargement de ' + state.generatedScenes.length + ' scènes…', 'success', 2000);
+    for (const scene of state.generatedScenes) {
+        const num = String(scene.index + 1).padStart(2, '0');
+        const a = document.createElement('a');
+        a.href = scene.url;
+        a.download = 'scene-' + num + '.mp4';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await sleep(400);
+    }
+}
+
+function loadJSZip() {
+    return new Promise((resolve) => {
+        if (window.JSZip) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        script.onload = resolve;
+        script.onerror = () => { log('JSZip indisponible'); resolve(); };
+        document.head.appendChild(script);
+    });
+}
+
+function switchMode(mode) {
+    state.mode = mode;
+    const storyBtn = document.getElementById('mode-story');
+    const songBtn = document.getElementById('mode-song');
+    const storyContent = document.getElementById('story-mode-content');
+    const songContent = document.getElementById('song-mode-content');
+    if (mode === 'story') {
+        storyBtn.classList.add('active');
+        songBtn.classList.remove('active');
+        storyContent.classList.remove('hidden');
+        songContent.classList.add('hidden');
+    } else {
+        songBtn.classList.add('active');
+        storyBtn.classList.remove('active');
+        songContent.classList.remove('hidden');
+        storyContent.classList.add('hidden');
+    }
+    updateGenerateBtn();
+}
+
+function setupToggle(id, stateKey) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (state[stateKey]) el.classList.add('on');
+    el.addEventListener('click', () => {
+        el.classList.toggle('on');
+        state[stateKey] = el.classList.contains('on');
+        updateBadge(id, state[stateKey]);
+    });
+    updateBadge(id, state[stateKey]);
+}
+
+function updateBadge(toggleId, isOn) {
+    const map = { 'voice-toggle': 'voice-badge', 'music-toggle': 'music-badge' };
+    const badgeId = map[toggleId];
+    if (!badgeId) return;
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    if (isOn) { badge.textContent = 'on'; badge.classList.remove('off'); }
+    else { badge.textContent = 'off'; badge.classList.add('off'); }
+}
+
+(async function init() {
+    await loadJSZip();
+
+    document.getElementById('api-save-btn').addEventListener('click', saveApiKey);
+    document.getElementById('api-key-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveApiKey(); }
+    });
+
+    document.getElementById('mode-story').addEventListener('click', () => switchMode('story'));
+    document.getElementById('mode-song').addEventListener('click', () => switchMode('song'));
+
+    document.getElementById('story-input').addEventListener('input', updateGenerateBtn);
+    document.getElementById('song-input').addEventListener('input', updateGenerateBtn);
+    document.getElementById('story-duration').addEventListener('change', updateGenerateBtn);
+    document.getElementById('song-duration').addEventListener('change', updateGenerateBtn);
+
+    document.querySelectorAll('[data-toggle]').forEach(header => {
+        header.addEventListener('click', () => {
+            document.getElementById(header.dataset.toggle).classList.toggle('open');
+        });
+    });
+
+    document.getElementById('generate-btn').addEventListener('click', startGeneration);
+    document.getElementById('stop-btn').addEventListener('click', stopGeneration);
+    document.getElementById('wake-toggle-btn').addEventListener('click', toggleWakeLock);
+    document.getElementById('export-zip').addEventListener('click', exportZip);
+    document.getElementById('download-all').addEventListener('click', downloadAll);
+
+    setupToggle('voice-toggle', 'voiceEnabled');
+    setupToggle('music-toggle', 'musicEnabled');
+
+    document.getElementById('voice-select').addEventListener('change', (e) => {
+        state.selectedVoice = availableVoices[parseInt(e.target.value, 10)];
+    });
+    document.getElementById('voice-rate').addEventListener('change', (e) => {
+        state.voiceRate = parseFloat(e.target.value);
+    });
+    document.getElementById('music-mood').addEventListener('change', (e) => {
+        state.musicMood = e.target.value;
+    });
+
+    try {
+        const saved = localStorage.getItem(WAKE_LOCK_PREF);
+        wakeLockEnabled = saved === '1';
+    } catch (e) {}
+    if (wakeLockEnabled) {
+        activateWakeLock().then(() => updateWakeStatus());
+    }
+
+    updateApiPanel();
+    updateWakeStatus();
+    renderPresets();
+    updateGenerateBtn();
+    log('Story Studio prêt.');
+})();
+</script>
+</body>
+</html>
