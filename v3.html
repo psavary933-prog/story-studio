@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Story Studio V3 — Histoires & Vidéos IA</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+        --bg: #0a0a0f; --panel: #14141c; --panel-2: #1c1c26; --border: #2a2a38;
+        --ink: #f0f0f5; --ink-dim: #8888a0; --ink-faint: #55556a;
+        --accent: #ff2d6f; --accent-2: #7b2dff; --success: #2dd47e; --error: #ff4757; --warn: #ffa502;
+        --radius: 14px;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--ink); min-height: 100vh;
+        padding: 1.2rem 1rem 6rem; font-size: 15px; line-height: 1.5;
+        max-width: 900px; margin: 0 auto;
+        background-image: radial-gradient(circle at 20% 0%, rgba(255,45,111,0.08), transparent 50%),
+                          radial-gradient(circle at 80% 100%, rgba(123,45,255,0.08), transparent 50%);
+    }
+    header { margin-bottom: 1.5rem; text-align: center; }
+    h1 {
+        font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.3rem;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .subtitle { font-size: 0.8rem; color: var(--ink-dim); }
+
+    .toast {
+        position: fixed; top: 1.5rem; left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: var(--panel); color: var(--ink);
+        border: 1px solid var(--border);
+        padding: 0.85rem 1.4rem; border-radius: 10px;
+        font-size: 0.85rem; font-weight: 500;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        z-index: 1000; opacity: 0;
+        transition: transform 0.35s ease, opacity 0.35s ease;
+        max-width: 90vw; text-align: center;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--error); }
+    .toast.warn { border-color: var(--warn); }
+
+    .mode-switch {
+        display: flex; gap: 0.5rem; margin-bottom: 1rem;
+        background: var(--panel); padding: 0.4rem; border-radius: 14px;
+        border: 1px solid var(--border);
+    }
+    .mode-btn {
+        flex: 1; padding: 0.85rem; border-radius: 10px; border: none;
+        background: transparent; color: var(--ink-dim);
+        font-family: inherit; font-size: 0.85rem; font-weight: 700;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .mode-btn.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; box-shadow: 0 4px 16px rgba(255,45,111,0.3);
+    }
+
+    .section {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden;
+    }
+    .section-header {
+        padding: 0.95rem 1.1rem; cursor: pointer; user-select: none;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .section-header:active { background: var(--panel-2); }
+    .section-title {
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em;
+        color: var(--ink-dim); font-weight: 700;
+    }
+    .section-title .badge {
+        display: inline-block; margin-left: 0.4rem; padding: 0.15rem 0.5rem;
+        background: var(--accent); color: #fff; border-radius: 10px;
+        font-size: 0.62rem; letter-spacing: 0.05em;
+    }
+    .section-title .badge.off { background: var(--ink-faint); }
+    .section-title .badge.ok { background: var(--success); }
+    .section-header .chevron { font-size: 0.7rem; color: var(--ink-faint); transition: transform 0.2s; }
+    .section.open .section-header .chevron { transform: rotate(180deg); }
+    .section-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .section.open .section-body { max-height: 8000px; }
+    .section-content { padding: 0 1.1rem 1.1rem; }
+
+    .api-panel {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: 1rem;
+        transition: border-color 0.3s;
+    }
+    .api-panel.ok { border-color: var(--success); }
+    .api-key-input {
+        width: 100%; padding: 0.85rem 1rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 0.85rem; margin-bottom: 0.6rem;
+    }
+    .api-key-input:focus { outline: none; border-color: var(--accent); }
+    .api-save-btn {
+        width: 100%; padding: 0.8rem 1.2rem; border-radius: 10px; border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; font-size: 0.9rem; font-weight: 700; font-family: inherit;
+        cursor: pointer; margin-bottom: 0.6rem;
+    }
+    .api-save-btn:active { transform: scale(0.98); }
+    .api-status-line {
+        font-size: 0.75rem; padding: 0.55rem 0.85rem; border-radius: 8px;
+        display: flex; align-items: center; gap: 0.5rem;
+        background: var(--panel-2); color: var(--ink-dim); transition: all 0.3s;
+    }
+    .api-status-line.ok { background: rgba(45,212,126,0.12); color: var(--success); font-weight: 600; }
+    .api-status-line .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--ink-faint); flex-shrink: 0;
+    }
+    .api-status-line.ok .status-dot { background: var(--success); }
+    .api-hint { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem; }
+    .api-hint a { color: var(--accent); text-decoration: underline; }
+
+    .wake-status {
+        font-size: 0.72rem; padding: 0.5rem 0.7rem; border-radius: 8px; margin-top: 0.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--panel-2); color: var(--ink-dim); flex-wrap: wrap; gap: 0.4rem;
+    }
+    .wake-status.active { background: rgba(45,212,126,0.12); color: var(--success); }
+    .wake-status.warn { background: rgba(255,165,2,0.12); color: var(--warn); }
+    .wake-status button {
+        background: transparent; border: 1px solid currentColor; color: inherit;
+        padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.68rem;
+        cursor: pointer; font-family: inherit;
+    }
+
+    .script-input {
+        width: 100%; padding: 1rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.92rem; min-height: 120px; resize: vertical;
+        line-height: 1.55;
+    }
+    .script-input:focus { outline: none; border-color: var(--accent); }
+    .script-hint { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem; line-height: 1.5; }
+
+    .control-row { margin-bottom: 0.9rem; }
+    .control-row:last-child { margin-bottom: 0; }
+    .control-label {
+        display: block; font-size: 0.72rem; color: var(--ink-dim);
+        margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;
+        font-weight: 700;
+    }
+    select, input[type="text"], input[type="number"] {
+        width: 100%; padding: 0.75rem 0.9rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.88rem;
+    }
+    select {
+        -webkit-appearance: none; appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23f0f0f5' d='M0 0l5 6 5-6z'/></svg>");
+        background-repeat: no-repeat; background-position: right 0.9rem center;
+        background-size: 10px;
+    }
+    select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+    .toggle-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.7rem 0; border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row .toggle-info { flex: 1; }
+    .toggle-row .toggle-name { font-size: 0.85rem; font-weight: 600; }
+    .toggle-row .toggle-desc { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.1rem; }
+    .toggle-switch {
+        position: relative; width: 46px; height: 26px; flex-shrink: 0;
+        background: var(--panel-2); border-radius: 14px; cursor: pointer;
+        transition: background 0.25s; border: 1px solid var(--border);
+    }
+    .toggle-switch::after {
+        content: ''; position: absolute; top: 2px; left: 2px;
+        width: 20px; height: 20px; background: var(--ink-dim);
+        border-radius: 50%; transition: transform 0.25s, background 0.25s;
+    }
+    .toggle-switch.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+    .toggle-switch.on::after { transform: translateX(20px); background: #fff; }
+
+    .btn-primary {
+        width: 100%; padding: 1.15rem; border-radius: var(--radius); border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; font-size: 1rem; font-weight: 700; font-family: inherit;
+        cursor: pointer; margin-bottom: 1rem; letter-spacing: 0.02em;
+        box-shadow: 0 8px 24px rgba(255,45,111,0.25);
+    }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+    .btn-stop {
+        width: 100%; padding: 0.85rem; border-radius: var(--radius);
+        border: 1px solid var(--error); background: transparent;
+        color: var(--error); font-size: 0.85rem; font-weight: 700;
+        font-family: inherit; cursor: pointer; margin-bottom: 1rem; display: none;
+    }
+    .btn-stop.visible { display: block; }
+
+    /* Casting */
+    .cast-card {
+        display: flex; gap: 0.7rem; padding: 0.7rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        margin-bottom: 0.5rem; align-items: center;
+    }
+    .cast-avatar {
+        width: 50px; height: 50px; border-radius: 50%; object-fit: cover;
+        background: var(--bg); flex-shrink: 0;
+        border: 2px solid var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+    }
+    .cast-info { flex: 1; min-width: 0; }
+    .cast-name { font-size: 0.85rem; font-weight: 700; color: var(--ink); }
+    .cast-desc { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.1rem;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cast-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+    .cast-actions button {
+        width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+        background: var(--panel); color: var(--ink); cursor: pointer;
+        font-size: 0.7rem; font-family: inherit;
+    }
+    .cast-add {
+        width: 100%; padding: 0.8rem; border-radius: 10px;
+        border: 2px dashed var(--border); background: transparent; color: var(--ink-dim);
+        font-family: inherit; font-size: 0.82rem; cursor: pointer; margin-top: 0.5rem;
+    }
+    .cast-add:active { border-color: var(--accent); color: var(--accent); }
+    .upload-zone {
+        border: 2px dashed var(--border); border-radius: 10px;
+        padding: 1.2rem 1rem; text-align: center; cursor: pointer;
+        transition: border-color 0.2s; background: var(--panel-2); margin-top: 0.5rem;
+    }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-zone .upload-text { font-size: 0.82rem; }
+    .upload-zone .upload-hint { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.2rem; }
+
+    /* Bibliothèque */
+    .lib-cats { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+    .lib-cat {
+        padding: 0.4rem 0.75rem; border-radius: 20px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+    }
+    .lib-cat.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #fff; border-color: transparent;
+    }
+    .lib-search {
+        width: 100%; padding: 0.7rem 0.9rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.85rem; margin-bottom: 0.6rem;
+    }
+    .lib-search:focus { outline: none; border-color: var(--accent); }
+    .lib-list { max-height: 400px; overflow-y: auto; }
+    .lib-item {
+        padding: 0.7rem 0.85rem; border-radius: 8px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        margin-bottom: 0.35rem; cursor: pointer; transition: all 0.15s;
+        font-size: 0.82rem;
+    }
+    .lib-item:active { transform: scale(0.99); border-color: var(--accent); }
+    .lib-item .lib-title { font-weight: 600; }
+    .lib-item .lib-excerpt {
+        font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.15rem;
+        overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+        -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+
+    /* File d'attente */
+    .queue { margin-top: 1rem; }
+    .queue-summary {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 10px; padding: 0.75rem 0.95rem; margin-bottom: 0.6rem;
+        font-size: 0.78rem; display: flex; justify-content: space-between;
+        align-items: center; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .queue-summary .progress-text { color: var(--ink); font-weight: 700; }
+    .queue-summary .eta-text { color: var(--ink-dim); }
+    .queue-item {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.7rem 0.85rem; border-radius: 10px;
+        border: 1px solid var(--border); margin-bottom: 0.4rem;
+        background: var(--panel); transition: border-color 0.3s, opacity 0.3s;
+        font-size: 0.82rem;
+    }
+    .queue-item.pending { opacity: 0.55; }
+    .queue-item.creating { border-color: var(--warn); }
+    .queue-item.processing { border-color: var(--accent); }
+    .queue-item.done { border-color: var(--success); }
+    .queue-item.failed { border-color: var(--error); }
+    .queue-item .q-icon { font-size: 1rem; width: 1.5rem; text-align: center; flex-shrink: 0; }
+    .queue-item .q-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-item .q-style {
+        font-size: 0.68rem; color: var(--accent); padding: 0.15rem 0.45rem;
+        background: rgba(255,45,111,0.1); border-radius: 6px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 35%;
+    }
+    .queue-item .q-status { font-size: 0.72rem; color: var(--ink-dim); flex-shrink: 0; }
+
+    /* Galerie */
+    .gallery { margin-top: 1.5rem; }
+    .gallery-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.9rem;
+    }
+    .gallery-item {
+        border-radius: var(--radius); overflow: hidden;
+        border: 1px solid var(--border); background: #000;
+        animation: fadeIn 0.5s ease;
+    }
+    .gallery-item video { width: 100%; display: block; aspect-ratio: 9/16; object-fit: cover; }
+    .gallery-item .g-caption {
+        padding: 0.5rem 0.7rem; background: var(--panel);
+        font-size: 0.7rem; color: var(--ink-dim);
+        display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;
+    }
+    .gallery-item .g-download {
+        background: transparent; border: 1px solid var(--border); color: var(--ink);
+        padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem;
+        cursor: pointer; font-family: inherit; text-decoration: none;
+    }
+    .gallery-actions {
+        display: flex; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap;
+    }
+    .gallery-actions button {
+        flex: 1; min-width: 140px; padding: 0.7rem; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--panel-2); color: var(--ink);
+        font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .gallery-actions button:active { transform: scale(0.98); }
+
+    .status-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: var(--panel); border-top: 1px solid var(--border);
+        color: var(--ink); padding: 0.75rem 1rem;
+        font-size: 0.78rem; display: flex; align-items: center; gap: 0.6rem;
+        transform: translateY(100%); transition: transform 0.3s;
+        z-index: 100; backdrop-filter: blur(10px);
+    }
+    .status-bar.visible { transform: translateY(0); }
+    .status-bar .spinner {
+        width: 12px; height: 12px; border: 2px solid rgba(255,45,111,0.3);
+        border-top-color: var(--accent); border-radius: 50%;
+        animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .hidden { display: none !important; }
+    #noSleepCanvas, #noSleepVideo { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1; }
+
+    .capcut-guide {
+        background: linear-gradient(135deg, rgba(45,212,126,0.1), rgba(123,45,255,0.1));
+        border: 1px solid var(--success); border-radius: 12px;
+        padding: 1rem; margin-top: 1rem; font-size: 0.8rem; line-height: 1.6;
+    }
+    .capcut-guide h3 { font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--success); }
+    .capcut-guide ol { margin-left: 1.2rem; }
+    .capcut-guide li { margin-bottom: 0.3rem; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>📖 Story Studio V3 🎵</h1>
+    <p class="subtitle">Histoires & chansons pour enfants, générées par IA</p>
+</header>
+
+<div class="mode-switch">
+    <button class="mode-btn active" id="mode-story">📖 Histoire</button>
+    <button class="mode-btn" id="mode-song">🎵 Chanson enfant</button>
+</div>
+
+<div class="api-panel" id="api-panel">
+    <input type="password" class="api-key-input" id="api-key-input"
+           placeholder="Collez votre clé API ici (sk-...)" autocomplete="off" spellcheck="false">
+    <button type="button" class="api-save-btn" id="api-save-btn">Enregistrer la clé</button>
+    <div class="api-status-line" id="api-status-line">
+        <span class="status-dot"></span>
+        <span id="api-status-text">Aucune clé API enregistrée</span>
+    </div>
+    <div class="api-hint">
+        Clé gratuite sur <a href="https://platform.agnes-ai.com" target="_blank">platform.agnes-ai.com</a>
+    </div>
+    <div class="wake-status" id="wake-status">
+        <span id="wake-status-text">💤 Veille automatique</span>
+        <button type="button" id="wake-toggle-btn">Garder l'écran allumé</button>
+    </div>
+</div>
+
+<div class="section open" id="section-lib">
+    <div class="section-header" data-toggle="section-lib">
+        <span class="section-title">📚 Bibliothèque d'histoires <span class="badge ok">100</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <input type="text" class="lib-search" id="lib-search" placeholder="🔍 Rechercher une histoire...">
+            <div class="lib-cats" id="lib-cats"></div>
+            <div class="lib-list" id="lib-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- PARTIE 1 FIN --><div class="section" id="section-cast">
+    <div class="section-header" data-toggle="section-cast">
+        <span class="section-title">🎭 Casting (personnages) <span class="badge" id="cast-badge">0</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="script-hint" style="margin-bottom:0.7rem;">
+                Ajoute tes personnages avec une photo et une description.
+                L’IA gardera le même visage dans toutes les scènes.
+            </div>
+            <div id="cast-list"></div>
+            <button type="button" class="cast-add" id="cast-add">➕ Ajouter un personnage</button>
+        </div>
+    </div>
+</div>
+
+<div class="section open" id="section-story-input">
+    <div class="section-header" data-toggle="section-story-input">
+        <span class="section-title">📝 Ton histoire / idée <span class="badge">obligatoire</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <textarea class="script-input" id="story-input"
+                placeholder="Écris ton histoire complète, ou clique une histoire dans la bibliothèque ci-dessus."></textarea>
+            <div class="script-hint">
+                💡 Tu peux utiliser <strong>[NOM]</strong> pour indiquer un personnage du casting dans une scène.
+                Exemple : <em>[MARIE] frappe à la porte.</em>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-story-type">
+    <div class="section-header" data-toggle="section-story-type">
+        <span class="section-title">🎭 Réglages histoire</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Genre</label>
+                <select id="story-genre">
+                    <option value="conte">📖 Conte pour enfants</option>
+                    <option value="motivation">💪 Motivation</option>
+                    <option value="aventure">🌍 Aventure</option>
+                    <option value="mystere">😱 Mystère / Horreur</option>
+                    <option value="philo">🎭 Philosophique</option>
+                    <option value="sf">🚀 Science-fiction</option>
+                    <option value="comedie">😂 Comédie</option>
+                    <option value="confiance">✨ Confiance en soi</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Durée</label>
+                <select id="story-duration">
+                    <option value="3">30 secondes (3 scènes)</option>
+                    <option value="6" selected>1 minute (6 scènes)</option>
+                    <option value="12">2 minutes (12 scènes)</option>
+                    <option value="18">3 minutes (18 scènes)</option>
+                    <option value="30">5 minutes (30 scènes)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-voice">
+    <div class="section-header" data-toggle="section-voice">
+        <span class="section-title">🎙️ Voix off <span class="badge off" id="voice-badge">off</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <div class="toggle-name">Activer la voix</div>
+                    <div class="toggle-desc">Le texte est lu automatiquement</div>
+                </div>
+                <div class="toggle-switch on" id="voice-toggle"></div>
+            </div>
+            <div class="control-row" style="margin-top:0.8rem;">
+                <label class="control-label">Voix</label>
+                <select id="voice-select"></select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Vitesse</label>
+                <select id="voice-rate">
+                    <option value="0.8">Lente (0.8x)</option>
+                    <option value="0.95" selected>Naturelle (0.95x)</option>
+                    <option value="1.1">Rapide (1.1x)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-music">
+    <div class="section-header" data-toggle="section-music">
+        <span class="section-title">🎶 Musique <span class="badge off" id="music-badge">off</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <div class="toggle-name">Activer la musique</div>
+                    <div class="toggle-desc">Nappe sonore générée en direct</div>
+                </div>
+                <div class="toggle-switch on" id="music-toggle"></div>
+            </div>
+            <div class="control-row" style="margin-top:0.8rem;">
+                <label class="control-label">Ambiance</label>
+                <select id="music-mood">
+                    <option value="joyeux">🎉 Joyeux</option>
+                    <option value="doux">🌙 Doux / Berceuse</option>
+                    <option value="epique">⚔️ Épique</option>
+                    <option value="magique">✨ Magique</option>
+                    <option value="aventure">🌍 Aventure</option>
+                    <option value="sombre">🌑 Sombre / Tension</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section" id="section-visual">
+    <div class="section-header" data-toggle="section-visual">
+        <span class="section-title">🎨 Style visuel</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Style des images</label>
+                <select id="visual-style">
+                    <option value="auto">🎲 Automatique (cohérent sur toute la vidéo)</option>
+                    <option value="enfant">🧸 Enfant / Cartoon pastel</option>
+                    <option value="conte">📚 Livre illustré</option>
+                    <option value="aquarelle">🎨 Aquarelle douce</option>
+                    <option value="3d">✨ 3D style Pixar</option>
+                    <option value="magique">🦄 Magique / Féérique</option>
+                    <option value="cinema">🎬 Cinématique</option>
+                    <option value="docu">📷 Documentaire</option>
+                    <option value="sombre">🌑 Drame sombre</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Format</label>
+                <select id="visual-format">
+                    <option value="portrait" selected>📱 Portrait 9:16 (TikTok / Reels)</option>
+                    <option value="paysage">🖥️ Paysage 16:9 (YouTube)</option>
+                    <option value="carre">⬛ Carré 1:1 (Instagram)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="btn-primary" id="generate-btn" disabled>
+    ✨ Générer ma vidéo
+</button>
+
+<button type="button" class="btn-stop" id="stop-btn">
+    ⏹ Arrêter
+</button>
+
+<div class="queue" id="queue" style="display:none;"></div>
+
+<div class="gallery" id="gallery" style="display:none;">
+    <div class="section-title" style="margin-bottom:0.8rem;">🎬 Tes scènes</div>
+    <div class="gallery-actions">
+        <button id="export-zip">📦 Exporter en ZIP</button>
+        <button id="download-all">⬇️ Télécharger tout</button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+
+    <div class="capcut-guide">
+        <h3>📱 Comment monter dans CapCut</h3>
+        <ol>
+            <li>Ouvre <strong>CapCut</strong> → <strong>Nouveau projet</strong></li>
+            <li>Importe <strong>toutes les vidéos</strong> dans l’ordre</li>
+            <li>Ajoute la <strong>voix off</strong> et la <strong>musique</strong></li>
+            <li>Appuie sur <strong>Exporter</strong> → ta vidéo est prête 🎉</li>
+        </ol>
+    </div>
+</div>
+
+<div class="status-bar" id="status-bar">
+    <div class="spinner"></div>
+    <span id="status-text">Préparation…</span>
+</div>
+
+<div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✓</span>
+    <span id="toast-text">Message</span>
+</div>
+
+<canvas id="noSleepCanvas" width="2" height="2"></canvas>
+<video id="noSleepVideo" playsinline muted loop></video>
+
+<!-- PARTIE 2 FIN --><script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════
+const API_BASE = 'https://apihub.agnes-ai.com/v1';
+const POLL_BASE = 'https://apihub.agnes-ai.com/agnesapi';
+const MODEL_VIDEO = 'agnes-video-v2.0';
+const FRAME_RATE = 24;
+const POLL_INTERVAL_SEC = 8;
+const MAX_POLL_ATTEMPTS = 100;
+const CREATE_INTERVAL_MS = 55000;
+const API_KEY_STORAGE = 'agnes_api_key';
+const WAKE_LOCK_PREF = 'agnes_wakelock_enabled';
+const CAST_STORAGE = 'story_studio_cast_v3';
+const MAX_VISIBLE_QUEUE = 50;
+const MAX_PARALLEL = 2;
+const MAX_CAST = 10;
+
+// ══════════════════════════════════════════════════════════════════
+// ÉTAT GLOBAL
+// ══════════════════════════════════════════════════════════════════
+const state = {
+    mode: 'story',
+    isRunning: false,
+    stopRequested: false,
+    queue: [],
+    completed: 0,
+    failed: 0,
+    durationFrames: 241,
+    sceneCount: 6,
+    voiceEnabled: true,
+    musicEnabled: true,
+    selectedVoice: null,
+    voiceRate: 0.95,
+    musicMood: 'joyeux',
+    visualStyle: 'auto',
+    visualFormat: 'portrait',
+    storyGenre: 'conte',
+    cast: [],
+    generatedScenes: [],
+    currentVisualStyleKey: null,
+    libCategory: 'motivation',
+    libSearch: ''
+};
+
+// ══════════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════════
+let toastTimeout = null;
+function showToast(message, type = 'success', duration = 2500) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.classList.remove('visible', 'success', 'error', 'warn');
+    void toast.offsetWidth;
+    const icons = { success: '✓', error: '✕', warn: '⚠' };
+    document.getElementById('toast-icon').textContent = icons[type] || '✓';
+    document.getElementById('toast-text').textContent = message;
+    toast.classList.add(type);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('visible'), duration);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UTILITAIRES
+// ══════════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function log(msg) { console.log('[StoryStudio] ' + msg); }
+function setStatus(text) {
+    const bar = document.getElementById('status-bar');
+    const txt = document.getElementById('status-text');
+    if (!bar || !txt) return;
+    if (text) { bar.classList.add('visible'); txt.textContent = text; }
+    else bar.classList.remove('visible');
+}
+function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+function formatEta(seconds) {
+    if (seconds < 60) return Math.round(seconds) + 's';
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return m + 'm' + (s > 0 ? ' ' + s + 's' : '');
+}
+function getApiKey() {
+    try { return (localStorage.getItem(API_KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CASTING
+// ══════════════════════════════════════════════════════════════════
+function loadCast() {
+    try {
+        const saved = localStorage.getItem(CAST_STORAGE);
+        if (saved) state.cast = JSON.parse(saved);
+    } catch (e) { state.cast = []; }
+}
+function saveCast() {
+    try { localStorage.setItem(CAST_STORAGE, JSON.stringify(state.cast)); } catch (e) {}
+}
+function addCastMember() {
+    if (state.cast.length >= MAX_CAST) {
+        showToast('Maximum ' + MAX_CAST + ' personnages', 'warn');
+        return;
+    }
+    const id = 'p' + Date.now();
+    state.cast.push({ id: id, name: '', desc: '', photo: null });
+    renderCast();
+    saveCast();
+}
+function removeCastMember(id) {
+    state.cast = state.cast.filter(c => c.id !== id);
+    renderCast();
+    saveCast();
+}
+function updateCastMember(id, field, value) {
+    const member = state.cast.find(c => c.id === id);
+    if (member) { member[field] = value; saveCast(); }
+}
+function renderCast() {
+    const list = document.getElementById('cast-list');
+    if (!list) return;
+    const badge = document.getElementById('cast-badge');
+    if (badge) badge.textContent = state.cast.length;
+
+    if (!state.cast.length) {
+        list.innerHTML = '<div style="font-size:0.75rem;color:var(--ink-dim);padding:0.5rem 0;">Aucun personnage. Clique sur « Ajouter » ci-dessous.</div>';
+        return;
+    }
+
+    list.innerHTML = state.cast.map(c => {
+        const avatar = c.photo
+            ? '<img class="cast-avatar" src="' + c.photo + '" alt="">'
+            : '<div class="cast-avatar">👤</div>';
+        return '<div class="cast-card" data-id="' + c.id + '">' +
+            avatar +
+            '<div class="cast-info">' +
+                '<input type="text" class="cast-name" data-field="name" data-id="' + c.id + '" placeholder="Nom (ex : MARIE)" value="' + esc(c.name) + '" style="background:transparent;border:none;padding:0;font-size:0.85rem;font-weight:700;color:var(--ink);width:100%;">' +
+                '<input type="text" class="cast-desc" data-field="desc" data-id="' + c.id + '" placeholder="Description (âge, vêtements...)" value="' + esc(c.desc) + '" style="background:transparent;border:none;padding:0;font-size:0.68rem;color:var(--ink-dim);width:100%;margin-top:0.1rem;">' +
+            '</div>' +
+            '<div class="cast-actions">' +
+                '<button type="button" data-photo="' + c.id + '" title="Photo">📷</button>' +
+                '<button type="button" data-remove="' + c.id + '" title="Supprimer">✕</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-field]').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            updateCastMember(e.target.dataset.id, e.target.dataset.field, e.target.value);
+        });
+    });
+    list.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => removeCastMember(btn.dataset.remove));
+    });
+    list.querySelectorAll('[data-photo]').forEach(btn => {
+        btn.addEventListener('click', () => pickPhoto(btn.dataset.photo));
+    });
+}
+
+function pickPhoto(id) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const member = state.cast.find(c => c.id === id);
+            if (member) {
+                member.photo = ev.target.result;
+                renderCast();
+                saveCast();
+                showToast('Photo ajoutée', 'success');
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
+}
+
+function findCastMember(text) {
+    for (const m of state.cast) {
+        if (!m.name) continue;
+        const clean = m.name.trim().toUpperCase();
+        if (text.toUpperCase().includes('[' + clean + ']')) return m;
+        if (text.toUpperCase().includes(clean)) return m;
+    }
+    return null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STYLES VISUELS
+// ══════════════════════════════════════════════════════════════════
+const VISUAL_STYLES = {
+    enfant: 'cute cartoon style for children, soft pastel colors, rounded shapes, friendly characters',
+    conte: 'classic fairy tale illustration, warm colors, storybook aesthetic',
+    aquarelle: 'soft watercolor painting, gentle colors, paper texture, dreamy',
+    '3d': 'high-quality 3D animation, Pixar style, subsurface scattering, expressive characters',
+    magique: 'magical fairy tale scene, glowing sparkles, enchanted forest, dreamy',
+    cinema: 'cinematic composition, dramatic lighting, film grain, epic scale',
+    docu: 'documentary style, natural lighting, realistic, handheld feel',
+    sombre: 'dark dramatic atmosphere, moody lighting, deep shadows, tension'
+};
+const AUTO_STYLES = ['enfant', 'conte', 'aquarelle', '3d', 'magique', 'cinema'];
+
+function pickVisualStyle() {
+    if (state.visualStyle === 'auto') {
+        if (!state.currentVisualStyleKey) {
+            state.currentVisualStyleKey = randomItem(AUTO_STYLES);
+        }
+        return state.currentVisualStyleKey;
+    }
+    return state.visualStyle;
+}
+
+function buildVisualPrompt() {
+    const key = pickVisualStyle();
+    const base = VISUAL_STYLES[key] || VISUAL_STYLES.enfant;
+    let format = 'vertical 9:16 portrait orientation';
+    if (state.visualFormat === 'paysage') format = 'horizontal 16:9 landscape orientation';
+    if (state.visualFormat === 'carre') format = 'square 1:1 orientation';
+    return base + ', ' + format + ', high quality, beautiful';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DÉCOUPAGE EN SCÈNES
+// ══════════════════════════════════════════════════════════════════
+function splitIntoScenes(text, count) {
+    const clean = text.trim().replace(/\s+/g, ' ');
+    const sentences = clean.split(/(?<=[.!?])\s+/).filter(s => s.length > 3);
+    const scenes = [];
+    if (sentences.length >= count) {
+        const perScene = Math.ceil(sentences.length / count);
+        for (let i = 0; i < count; i++) {
+            const start = i * perScene;
+            const end = Math.min(start + perScene, sentences.length);
+            if (start < sentences.length) {
+                scenes.push(sentences.slice(start, end).join(' '));
+            }
+        }
+    } else {
+        const words = clean.split(' ');
+        const perScene = Math.ceil(words.length / count);
+        for (let i = 0; i < count; i++) {
+            const start = i * perScene;
+            const end = Math.min(start + perScene, words.length);
+            if (start < words.length) {
+                scenes.push(words.slice(start, end).join(' '));
+            }
+        }
+    }
+    while (scenes.length < count) {
+        scenes.push(scenes[scenes.length - 1] || 'Suite de l\'histoire');
+    }
+    return scenes.slice(0, count);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONSTRUCTION DU PROMPT
+// ══════════════════════════════════════════════════════════════════
+function buildScenePrompt(sceneText, sceneIndex, totalScenes) {
+    const visual = buildVisualPrompt();
+    const cast = findCastMember(sceneText);
+    const parts = [];
+
+    parts.push('Animated scene, cinematic storytelling.');
+    parts.push('Scene ' + (sceneIndex + 1) + ' of ' + totalScenes + '.');
+    parts.push('Scene content: "' + sceneText + '"');
+
+    if (cast) {
+        if (cast.desc) {
+            parts.push('Main character: ' + cast.desc + '.');
+        }
+        parts.push('Keep the same character identity, face, hairstyle and clothing consistent across all scenes.');
+    } else if (state.cast.length > 0) {
+        const first = state.cast[0];
+        if (first.desc) parts.push('Main character: ' + first.desc + '.');
+    }
+
+    parts.push('Visual style: ' + visual + '.');
+    parts.push('Smooth motion, expressive characters, beautiful composition, atmospheric lighting.');
+    parts.push('No text, no subtitles, no watermarks.');
+
+    return parts.join(' ');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VOIX OFF
+// ══════════════════════════════════════════════════════════════════
+let availableVoices = [];
+function loadVoices() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    availableVoices = voices;
+    const select = document.getElementById('voice-select');
+    if (!select) return;
+    select.innerHTML = voices.map((v, i) =>
+        '<option value="' + i + '">' + esc(v.name) + ' (' + v.lang + ')</option>'
+    ).join('');
+    const frIndex = voices.findIndex(v => v.lang.startsWith('fr'));
+    if (frIndex >= 0) {
+        select.value = frIndex;
+        state.selectedVoice = voices[frIndex];
+    } else if (voices.length) {
+        state.selectedVoice = voices[0];
+    }
+}
+if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 200);
+    setTimeout(loadVoices, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MUSIQUE
+// ══════════════════════════════════════════════════════════════════
+let audioCtx = null;
+let musicNodes = [];
+let musicPlaying = false;
+
+const MUSIC_PRESETS = {
+    joyeux: { freqs: [261.63, 329.63, 392, 523.25], type: 'triangle', lfoRate: 0.4, filterFreq: 1500 },
+    doux: { freqs: [220, 261.63, 329.63], type: 'sine', lfoRate: 0.1, filterFreq: 700 },
+    epique: { freqs: [110, 164.81, 220, 329.63], type: 'sawtooth', lfoRate: 0.15, filterFreq: 800 },
+    magique: { freqs: [293.66, 369.99, 440, 587.33], type: 'sine', lfoRate: 0.2, filterFreq: 1200 },
+    aventure: { freqs: [130.81, 196, 261.63, 392], type: 'triangle', lfoRate: 0.3, filterFreq: 1000 },
+    sombre: { freqs: [82.41, 110, 146.83], type: 'triangle', lfoRate: 0.08, filterFreq: 500 }
+};
+
+function startMusic() {
+    if (musicPlaying) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const preset = MUSIC_PRESETS[state.musicMood] || MUSIC_PRESETS.joyeux;
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.05;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.frequency.value = preset.filterFreq; filter.Q.value = 0.7;
+        filter.connect(masterGain); masterGain.connect(audioCtx.destination);
+        musicNodes = [masterGain, filter];
+        preset.freqs.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            osc.type = preset.type; osc.frequency.value = freq;
+            const oscGain = audioCtx.createGain();
+            oscGain.gain.value = 0.15 / preset.freqs.length;
+            const lfo = audioCtx.createOscillator();
+            lfo.frequency.value = preset.lfoRate * (1 + i * 0.3);
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.value = 0.08;
+            lfo.connect(lfoGain); lfoGain.connect(oscGain.gain);
+            osc.connect(oscGain); oscGain.connect(filter);
+            osc.start(); lfo.start();
+            musicNodes.push(osc, oscGain, lfo, lfoGain);
+        });
+        musicPlaying = true;
+    } catch (e) { log('Erreur musique : ' + e.message); }
+}
+function stopMusic() {
+    if (!musicPlaying) return;
+    try { musicNodes.forEach(n => { try { if (n.stop) n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} }); } catch (e) {}
+    musicNodes = []; musicPlaying = false;
+}
+
+// PARTIE 3 FIN
+</script><script>
+// ══════════════════════════════════════════════════════════════════
+// WAKE LOCK
+// ══════════════════════════════════════════════════════════════════
+let wakeLockSentinel = null;
+let wakeLockEnabled = false;
+let canvasStream = null;
+let canvasInterval = null;
+
+function isWakeLockSupported() {
+    return 'wakeLock' in navigator && typeof navigator.wakeLock.request === 'function';
+}
+async function requestWakeLockAPI() {
+    if (!isWakeLockSupported()) return false;
+    try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; updateWakeStatus(); });
+        return true;
+    } catch (e) { return false; }
+}
+async function releaseWakeLockAPI() {
+    if (wakeLockSentinel) { try { await wakeLockSentinel.release(); } catch (e) {} wakeLockSentinel = null; }
+}
+function startCanvasStream() {
+    if (canvasStream) return true;
+    try {
+        const canvas = document.getElementById('noSleepCanvas');
+        const video = document.getElementById('noSleepVideo');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 2, 2);
+        if (typeof canvas.captureStream !== 'function') return false;
+        canvasStream = canvas.captureStream(1);
+        let toggle = false;
+        canvasInterval = setInterval(() => {
+            toggle = !toggle;
+            ctx.fillStyle = toggle ? '#000' : '#010101';
+            ctx.fillRect(0, 0, 2, 2);
+        }, 1000);
+        video.srcObject = canvasStream; video.muted = true; video.playsInline = true;
+        video.play().catch(() => {});
+        return true;
+    } catch (e) { return false; }
+}
+function stopCanvasStream() {
+    if (canvasInterval) { clearInterval(canvasInterval); canvasInterval = null; }
+    const video = document.getElementById('noSleepVideo');
+    if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
+    if (canvasStream) { try { canvasStream.getTracks().forEach(t => t.stop()); } catch (e) {} canvasStream = null; }
+}
+async function activateWakeLock() {
+    let success = false;
+    if (isWakeLockSupported()) success = await requestWakeLockAPI();
+    if (!success) success = startCanvasStream();
+    if (!success && !canvasStream) success = startCanvasStream();
+    return success;
+}
+async function deactivateWakeLock() { await releaseWakeLockAPI(); stopCanvasStream(); }
+function updateWakeStatus() {
+    const el = document.getElementById('wake-status');
+    const txt = document.getElementById('wake-status-text');
+    const btn = document.getElementById('wake-toggle-btn');
+    if (!el) return;
+    el.classList.remove('active', 'warn');
+    const hasAny = isWakeLockSupported() || (document.getElementById('noSleepCanvas')?.captureStream);
+    if (!hasAny) { el.classList.add('warn'); txt.textContent = '⚠️ Non supporté'; btn.style.display = 'none'; return; }
+    btn.style.display = 'inline-block';
+    const isActive = wakeLockSentinel !== null || canvasStream !== null;
+    if (wakeLockEnabled && isActive) {
+        el.classList.add('active'); txt.textContent = '✅ Écran allumé'; btn.textContent = 'Désactiver';
+    } else if (wakeLockEnabled) {
+        el.classList.add('warn'); txt.textContent = '⏳ En attente'; btn.textContent = 'Désactiver';
+    } else {
+        txt.textContent = '💤 Veille auto'; btn.textContent = 'Garder l\'écran allumé';
+    }
+}
+async function toggleWakeLock() {
+    if (wakeLockEnabled) {
+        wakeLockEnabled = false; await deactivateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '0'); } catch (e) {}
+        showToast('Veille auto réactivée', 'warn');
+    } else {
+        wakeLockEnabled = true;
+        const ok = await activateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '1'); } catch (e) {}
+        showToast(ok ? 'Écran restera allumé' : 'Activez manuellement', ok ? 'success' : 'warn');
+    }
+    updateWakeStatus();
+}
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && wakeLockEnabled) {
+        await activateWakeLock(); updateWakeStatus();
+    }
+});
+async function ensureWakeLockActive() {
+    if (!wakeLockEnabled) return;
+    if (wakeLockSentinel === null && canvasStream === null) {
+        await activateWakeLock(); updateWakeStatus();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════════════
+async function apiFetch(url, options = {}, label = 'API') {
+    for (let attempt = 0; attempt < 7; attempt++) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        try {
+            const res = await fetch(url, options);
+            if (res.status === 429) {
+                const wait = [15, 30, 45, 60, 90, 120, 180][Math.min(attempt, 6)];
+                log(label + ' : 429, attente ' + wait + 's');
+                setStatus('L\'IA se prépare… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            if (res.status === 503) {
+                const wait = [5, 10, 15, 20, 30, 45][Math.min(attempt, 5)];
+                log(label + ' : 503, attente ' + wait + 's');
+                setStatus('Préparation… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            return res;
+        } catch (e) {
+            if (e.message === 'Arrêt demandé') throw e;
+            const wait = [3, 5, 8, 12, 20, 30][Math.min(attempt, 5)];
+            log(label + ' : réseau, retry ' + wait + 's');
+            setStatus('Connexion… (' + wait + 's)');
+            await sleep(wait * 1000);
+        }
+    }
+    return fetch(url, options);
+}
+
+async function createVideoTask(prompt, imageDataUri) {
+    const body = {
+        model: MODEL_VIDEO,
+        prompt: prompt,
+        num_frames: state.durationFrames,
+        frame_rate: FRAME_RATE
+    };
+    if (imageDataUri) body.image = imageDataUri;
+    const res = await apiFetch(API_BASE + '/videos', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + getApiKey(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    }, 'Création');
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error('HTTP ' + res.status + ' — ' + err.slice(0, 200));
+    }
+    const data = await res.json();
+    const videoId = data.video_id || data.id || data.task_id;
+    if (!videoId) throw new Error('Pas de video_id retourné');
+    return videoId;
+}
+
+async function pollVideo(videoId, onProgress) {
+    const estimatedSec = 30 + state.durationFrames * 0.5;
+    let remaining = Math.max(20, Math.floor(estimatedSec * 0.7));
+    while (remaining > 0) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        onProgress('Préparation… — ' + remaining + 's');
+        await sleep(1000);
+        remaining--;
+    }
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        if (attempt > 0) {
+            let r = POLL_INTERVAL_SEC;
+            while (r > 0) {
+                if (state.stopRequested) throw new Error('Arrêt demandé');
+                onProgress('Rendu en cours… — ' + r + 's');
+                await sleep(1000);
+                r--;
+            }
+        }
+        const url = POLL_BASE + '?video_id=' + encodeURIComponent(videoId) + '&model_name=' + encodeURIComponent(MODEL_VIDEO);
+        const res = await apiFetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + getApiKey() }
+        }, 'Polling');
+        const d = await res.json();
+        const status = d.status || 'unknown';
+        const progress = d.progress || 0;
+        onProgress('Création… — ' + progress + '%');
+        if (status === 'completed' || status === 'succeeded' || status === 'done') {
+            const videoUrl = (d.metadata && d.metadata.url) || d.url || (d.output && d.output.url);
+            if (!videoUrl) throw new Error('Terminé mais pas d\'URL');
+            return videoUrl;
+        }
+        if (status === 'failed' || status === 'error' || status === 'cancelled') {
+            throw new Error('Échec (' + status + ')');
+        }
+    }
+    throw new Error('Délai maximal dépassé');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FILE D'ATTENTE
+// ══════════════════════════════════════════════════════════════════
+function renderQueue() {
+    const queueEl = document.getElementById('queue');
+    if (!queueEl) return;
+    if (!state.queue.length) { queueEl.style.display = 'none'; return; }
+    queueEl.style.display = 'block';
+    const total = state.queue.length;
+    const done = state.completed + state.failed;
+    const inProgress = state.queue.filter(q => q.status === 'processing' || q.status === 'creating').length;
+    const pending = total - done - inProgress;
+    const estGen = 30 + state.durationFrames * 0.5;
+    const eta = pending > 0
+        ? Math.ceil(pending / MAX_PARALLEL) * (CREATE_INTERVAL_MS / 1000) + estGen
+        : inProgress * estGen / Math.max(inProgress, 1);
+    let html = '<div class="queue-summary">' +
+        '<span class="progress-text">Progression : ' + done + '/' + total + ' scènes</span>' +
+        '<span class="eta-text">' + (done < total ? '≈ ' + formatEta(eta) + ' restant' : 'Terminé') + '</span>' +
+        '</div>';
+    const visible = state.queue.slice(0, MAX_VISIBLE_QUEUE);
+    const hidden = state.queue.length - visible.length;
+    html += visible.map(item => {
+        let icon = '○', statusText = 'En attente', cls = 'pending';
+        if (item.status === 'creating') { icon = '◐'; statusText = 'Préparation'; cls = 'creating'; }
+        else if (item.status === 'processing') { icon = '◐'; statusText = item.progress || 'En cours'; cls = 'processing'; }
+        else if (item.status === 'done') { icon = '●'; statusText = 'Terminé'; cls = 'done'; }
+        else if (item.status === 'failed') { icon = '✕'; statusText = 'Échec'; cls = 'failed'; }
+        return '<div class="queue-item ' + cls + '">' +
+            '<div class="q-icon">' + icon + '</div>' +
+            '<div class="q-name">Scène ' + (item.index + 1) + '</div>' +
+            '<div class="q-style">' + esc(item.sceneText ? item.sceneText.slice(0, 40) + '…' : '') + '</div>' +
+            '<div class="q-status">' + esc(statusText) + '</div>' +
+        '</div>';
+    }).join('');
+    if (hidden > 0) {
+        html += '<div style="text-align:center;padding:0.5rem;color:var(--ink-dim);font-size:0.75rem;font-style:italic;">… et ' + hidden + ' autre' + (hidden > 1 ? 's' : '') + '</div>';
+    }
+    queueEl.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GALERIE
+// ══════════════════════════════════════════════════════════════════
+function addToGallery(videoUrl, label, index) {
+    const galleryEl = document.getElementById('gallery');
+    const galleryGrid = document.getElementById('gallery-grid');
+    if (!galleryEl || !galleryGrid) return;
+    galleryEl.style.display = 'block';
+    const el = document.createElement('div');
+    el.className = 'gallery-item';
+    el.innerHTML =
+        '<video controls preload="metadata" muted playsinline loop>' +
+        '<source src="' + videoUrl + '" type="video/mp4">' +
+        '</video>' +
+        '<div class="g-caption">' +
+            '<span>' + esc(label) + '</span>' +
+            '<a class="g-download" href="' + videoUrl + '" download="scene-' + (index + 1) + '.mp4" target="_blank">↓</a>' +
+        '</div>';
+    galleryGrid.appendChild(el);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PIPELINE
+// ══════════════════════════════════════════════════════════════════
+async function processScene(item) {
+    try {
+        item.status = 'creating';
+        item.progress = 'Préparation…';
+        renderQueue();
+
+        const prompt = buildScenePrompt(item.sceneText, item.index, state.queue.length);
+        item.prompt = prompt;
+
+        const cast = findCastMember(item.sceneText);
+        const imageDataUri = cast && cast.photo ? cast.photo : null;
+
+        const videoId = await createVideoTask(prompt, imageDataUri);
+        item.videoId = videoId;
+        item.status = 'processing';
+        item.progress = 'En cours…';
+        renderQueue();
+
+        const videoUrl = await pollVideo(videoId, (prog) => {
+            item.progress = prog;
+            renderQueue();
+        });
+
+        item.status = 'done';
+        item.videoUrl = videoUrl;
+        item.progress = 'Terminé';
+        state.completed++;
+        state.generatedScenes.push({ index: item.index, url: videoUrl, text: item.sceneText });
+        renderQueue();
+        updateGenerateBtn();
+        addToGallery(videoUrl, 'Scène ' + (item.index + 1), item.index);
+    } catch (e) {
+        if (e.message === 'Arrêt demandé') {
+            item.status = 'failed'; item.progress = 'Arrêté';
+        } else {
+            log('Scène ' + (item.index + 1) + ' : ' + e.message);
+            item.status = 'failed'; item.progress = 'Échec';
+            state.failed++;
+        }
+        renderQueue();
+        updateGenerateBtn();
+    }
+}
+
+async function runQueue() {
+    let active = 0;
+    let idx = 0;
+    return new Promise((resolve) => {
+        const next = () => {
+            if (state.stopRequested) {
+                if (active === 0) resolve();
+                return;
+            }
+            while (active < MAX_PARALLEL && idx < state.queue.length) {
+                const item = state.queue[idx++];
+                active++;
+                processScene(item).finally(() => {
+                    active--;
+                    if (idx >= state.queue.length && active === 0) {
+                        resolve();
+                    } else {
+                        next();
+                    }
+                });
+            }
+            if (idx >= state.queue.length && active === 0) resolve();
+        };
+        next();
+    });
+}
+
+// PARTIE 4 FIN
+</script><script>
+// ══════════════════════════════════════════════════════════════════
+// BIBLIOTHÈQUE D'HISTOIRES (100)
+// ══════════════════════════════════════════════════════════════════
+const STORY_LIBRARY = {
+    motivation: {
+        name: '💪 Motivation',
+        stories: [
+            { title: 'Personne ne viendra te sauver', text: 'Personne ne viendra te sauver. Ni ta famille, ni tes amis, ni le destin. Tu es seul avec tes choix. Et c\'est une bonne nouvelle : ça veut dire que tout dépend de toi. Alors lève-toi. Maintenant.' },
+            { title: 'Arrête d\'attendre', text: 'Tu attends le bon moment. Le bon moment n\'existe pas. Il se crée. Chaque jour où tu attends, quelqu\'un d\'autre agit. Dans 10 ans, tu regarderas en arrière. Seras-tu fier ? Ou regretteras-tu ? À toi de voir.' },
+            { title: 'La discipline bat le talent', text: 'Le talent sans discipline ne vaut rien. La discipline sans talent peut tout accomplir. Regarde les grands : ils ne sont pas plus doués. Ils sont juste plus constants. Commence petit. Mais commence aujourd\'hui.' },
+            { title: 'Tu perds 3 heures par jour', text: 'Téléphone : 3 heures. Série : 2 heures. Scroll : 1 heure. Total : 6 heures. En 1 an, ça fait 2 190 heures. Soit 91 jours entiers. Qu\'est-ce que tu pourrais accomplir avec 91 jours ?' },
+            { title: 'Ton cerveau te ment', text: 'Ton cerveau te dit que tu es fatigué. Il te dit que c\'est trop dur. Il te dit d\'arrêter. C\'est un menteur. Il a peur. Fais-lui peur à ton tour. Dépasse-le. C\'est là que tu grandis.' },
+            { title: 'Lève-toi à 5 heures', text: '5 heures du matin. Personne ne travaille. Personne ne t\'appelle. Personne ne te dérange. C\'est ton heure. Une heure pour construire ta vie. Ce que tu fais à 5 h définit qui tu es à 25 h.' },
+            { title: 'Tu n\'as pas de but', text: 'Tu n\'as pas de but. Voilà ton problème. Sans but, tu flottes. Sans but, tu procrastines. Sans but, tu subis. Écris ton but. Une phrase. Un objectif. Et cours vers lui.' },
+            { title: 'Fais-le maintenant', text: 'Plus tard, c\'est jamais. Demain, c\'est jamais. Un jour, c\'est jamais. Maintenant, c\'est maintenant. Une seule règle : fais-le maintenant. Juste maintenant. Et après, recommence.' },
+            { title: 'Tu es faible et c\'est bien', text: 'Tu es faible. Oui. Et c\'est une bonne nouvelle. Parce que les faibles peuvent devenir forts. Les forts qui se croient forts deviennent faibles. La force n\'est pas un don. C\'est un choix quotidien.' },
+            { title: 'Personne ne te doit rien', text: 'Personne ne te doit rien. Pas ta famille. Pas tes amis. Pas la société. Tu es le seul responsable de ta vie. Si tu attends quelque chose des autres, tu seras déçu. Si tu comptes sur toi, tu seras libre.' },
+            { title: 'Échoue 100 fois', text: 'Échoue. 100 fois. 1000 fois. Chaque échec te rapproche de la réussite. Ceux qui réussissent ne sont pas ceux qui n\'échouent jamais. Ce sont ceux qui échouent et recommencent. Encore. Encore. Encore.' },
+            { title: 'Le temps ne revient pas', text: 'Tu ne peux pas rembobiner. Chaque seconde qui passe est perdue pour toujours. Tu ne peux pas acheter du temps. Tu ne peux pas emprunter du temps. Tu peux seulement l\'utiliser. Maintenant. Comment utilises-tu la tienne ?' },
+            { title: 'Ton futur te regarde', text: 'Dans 10 ans, tu seras quelqu\'un. La question est : qui ? C\'est toi aujourd\'hui qui décides. Chaque choix. Chaque habitude. Chaque renoncement. Ton futur te regarde. Ne le déçois pas.' },
+            { title: 'Le silence est puissant', text: 'Arrête de parler. Arrête d\'expliquer. Arrête de te justifier. Agis. Les gens qui parlent beaucoup accomplissent peu. Les gens qui agissent n\'ont pas besoin de parler. Fais. Et laisse les autres parler.' },
+            { title: 'La peur est un signal', text: 'Si tu as peur, c\'est bon signe. Ça veut dire que tu es en train de grandir. Les gens qui n\'ont jamais peur ne font rien d\'important. La peur n\'est pas un obstacle. C\'est un guide.' },
+            { title: 'Sois celui qui reste', text: 'Beaucoup commencent. Peu continuent. Très peu finissent. Sois celui qui reste. Quand les autres abandonnent, toi tu continues. Quand les autres doutent, toi tu avances. Le succès est un marathon, pas un sprint.' },
+            { title: 'Ta vie est une œuvre', text: 'Ta vie n\'est pas écrite. Elle est en train de s\'écrire. Chaque jour, tu ajoutes une ligne. Chaque choix, une page. Dans 50 ans, quel livre auras-tu écrit ? Un chef-d\'œuvre ? Ou une note de bas de page ?' },
+            { title: 'Le succès n\'est pas un accident', text: 'Les gens pensent que le succès arrive par chance. Faux. Le succès est le résultat de milliers de petits choix. Levé tôt. Étudié. Travaillé. Recommencé. Le succès n\'est pas un accident. C\'est une décision.' },
+            { title: 'Arrête de te plaindre', text: 'Ta vie est dure ? Celle des autres aussi. La différence : certains se plaignent, d\'autres agissent. Les plaintifs restent plaintifs. Les acteurs deviennent maîtres. Choisis ton camp. Maintenant.' },
+            { title: 'Ton pire ennemi, c\'est toi', text: 'Le plus grand obstacle sur ton chemin, c\'est toi. Tes doutes. Ta peur. Ta paresse. Tes excuses. Tant que tu ne te vaincs pas toi-même, tu n\'avanceras pas. Vaincs-toi. Chaque jour.' },
+            { title: 'Une seule vie', text: 'Tu n\'en as qu\'une. Une seule. Pas deux. Pas dix. Une. Tu la passes comment ? À te comparer ? À attendre ? À regretter ? Ou à vivre ? La réponse t\'appartient. Mais le temps, lui, ne t\'attend pas.' },
+            { title: 'Le prix de la médiocrité', text: 'La médiocrité ne coûte rien sur le moment. Mais elle coûte tout à la fin. Une vie sans accomplissement. Sans fierté. Sans sens. La médiocrité est le prix le plus cher que tu puisses payer. Refuse-la.' },
+            { title: 'Fais peur à ton cerveau', text: 'Ton cerveau cherche la sécurité. Le confort. La routine. Désobéis. Fais quelque chose qui te terrifie. Parle en public. Lance ton projet. Change de vie. Ton cerveau te remerciera après.' },
+            { title: 'Ce que tu répètes devient toi', text: 'Tu es ce que tu répètes. Chaque jour. Chaque habitude. Chaque pensée. Si tu répètes la paresse, tu deviens paresseux. Si tu répètes l\'effort, tu deviens fort. Choisis ce que tu répètes.' },
+            { title: 'Le regret est pire que l\'échec', text: 'L\'échec fait mal. Mais il guérit. Le regret, lui, ne guérit jamais. Dans 20 ans, tu ne regretteras pas ce que tu as tenté. Tu regretteras ce que tu n\'as pas tenté. Alors tente.' },
+            { title: 'Ton seul adversaire', text: 'Tu n\'as qu\'un seul adversaire : celui d\'hier. Si tu es meilleur qu\'hier, tu gagnes. Si tu es pire, tu perds. Peu importe les autres. Le seul combat qui compte, c\'est contre toi-même.' },
+            { title: 'La douleur est temporaire', text: 'La douleur de la discipline dure des mois. La douleur du regret dure des années. À toi de choisir laquelle tu veux porter. La première te construira. La seconde te détruira.' },
+            { title: 'Ferme les yeux et avance', text: 'Parfois, tu ne sauras pas où tu vas. C\'est normal. Ferme les yeux. Avance. Un pas. Puis un autre. Puis un autre. Le chemin se révèle à ceux qui marchent. Pas à ceux qui attendent.' },
+            { title: 'Ce que tu fais aujourd\'hui', text: 'Ce que tu fais aujourd\'hui définit qui tu seras demain. Pas hier. Pas demain. Aujourd\'hui. Alors choisis bien chaque action. Chaque minute. Chaque pensée. Aujourd\'hui.' },
+            { title: 'Tu peux tout changer', text: 'Tu peux tout changer. Ta vie. Ton corps. Ton mental. Ta situation. Tout. À une condition : commencer. Pas demain. Pas lundi. Maintenant. Une première action. Puis une autre.' },
+            { title: 'La vie est courte', text: 'La vie est courte. Trop courte pour la gaspiller. Trop courte pour attendre. Trop courte pour avoir peur. Fais ce que tu aimes. Aime ce que tu fais. Et n\'aie aucun regret à la fin.' },
+            { title: 'Sois patient', text: 'Tout prend du temps. Les arbres ne poussent pas en un jour. Les muscles ne se forment pas en une semaine. Les fortunes ne se bâtissent pas en un mois. Sois patient. Continue. Le temps travaille pour toi.' },
+            { title: 'Ton corps est ton temple', text: 'Ton corps est ton temple. Tu le nourris comment ? Tu le bouges comment ? Tu le reposes comment ? Si tu ne prends pas soin de ton corps, tu ne pourras pas accomplir tes rêves. Sois ton premier médecin.' },
+            { title: 'Les excuses tuent', text: 'Chaque excuse te tue un peu. « Pas le temps ». « Pas l\'argent ». « Pas les capacités ». Ce sont des mensonges. Des mensonges que tu te répètes pour ne pas agir. Tue les excuses. Fais-le.' },
+            { title: 'Un jour ou jour 1', text: '« Un jour » est un mensonge. « Jour 1 » est une décision. Arrête de dire « un jour, je le ferai ». Dis « aujourd\'hui, je commence ». C\'est jour 1. Pas un jour.' },
+            { title: 'La force est un choix', text: 'La force n\'est pas un don. C\'est un choix. Chaque jour, tu choisis d\'être fort ou faible. Par tes actions. Par tes pensées. Par tes paroles. Tu peux choisir maintenant. Choisis la force.' },
+            { title: 'Ne demande pas la permission', text: 'Tu n\'as pas besoin de la permission pour réussir. Tu n\'as pas besoin d\'autorisation pour changer. Tu n\'as pas besoin d\'approbation. Tu as juste besoin de toi. Agis. Le reste suivra.' },
+            { title: 'Les grands sont seuls', text: 'Tous les grands hommes ont connu la solitude. Le doute. La peur. Mais ils ont continué. Ils ont marché seuls. Et c\'est pour ça qu\'ils sont devenus grands. Marche seul si nécessaire. Mais marche.' },
+            { title: 'Le meilleur investissement', text: 'Le meilleur investissement, c\'est toi. Pas la bourse. Pas les cryptos. Pas l\'immobilier. Toi. Ton éducation. Ta santé. Ton mental. Investis en toi. Le retour sera infini.' },
+            { title: 'Ta seule limite', text: 'Ta seule limite, c\'est celle que tu acceptes. Les autres te diront « c\'est impossible ». Ils ne savent pas. Ils parlent de leur propre peur. Écoute ton cœur. Et prouve-leur qu\'ils avaient tort.' },
+            { title: 'Chaque matin est une chance', text: 'Chaque matin, tu reçois une chance. Celle de recommencer. D\'oublier hier. De construire aujourd\'hui. Ne gaspille pas cette chance. Elle est rare. Elle est précieuse. Utilise-la.' }
+        ]
+    },
+    enfant: {
+        name: '📖 Contes enfants',
+        stories: [
+            { title: 'Le lapin partageur', text: 'Il était une fois un petit lapin blanc qui adorait ses carottes. Un jour, il rencontra une souris affamée. Le lapin hésita, puis partagea sa plus belle carotte. La souris sourit et lui offrit une graine magique. Le lendemain, un champ entier de carottes avait poussé. Depuis ce jour, le lapin comprit que partager rendait bien plus riche que garder.' },
+            { title: 'Le dragon peureux', text: 'Un jeune dragon avait peur du feu. Tous les autres dragons se moquaient de lui. Un soir, il rencontra une petite fille perdue dans la montagne. Il souffla doucement sur une brindille pour la réchauffer. La brindille s\'alluma. Le dragon découvrit qu\'il n\'avait pas peur du feu, mais de faire mal. Il devint le plus gentil des dragons.' },
+            { title: 'La petite étoile', text: 'Dans le ciel, une petite étoile se sentait trop petite pour briller. Elle regarda les autres étoiles, si grandes, si lumineuses. Un enfant, perdu dans la nuit, leva les yeux et vit justement cette petite étoile. Il lui sourit. L\'étoile comprit alors que même la plus petite lumière peut guider un cœur perdu.' },
+            { title: 'Le nuage qui avait peur de la pluie', text: 'Un petit nuage avait peur de faire tomber la pluie. Il avait peur de mouiller les gens. Un jour, la terre devint si sèche que les fleurs se fanèrent. Le petit nuage comprit qu\'il devait agir. Il laissa tomber une goutte, puis deux, puis mille. La terre fleurit à nouveau.' },
+            { title: 'La lune qui ne voulait pas dormir', text: 'Chaque nuit, la lune devait se coucher pour laisser le soleil se lever. Mais une nuit, la lune décida de rester. Le monde resta dans la nuit. Les fleurs ne s\'ouvrirent pas. Les oiseaux ne chantèrent pas. La lune comprit alors que sa place avait un sens. Elle se coucha doucement.' },
+            { title: 'Le chat qui ne miaulait pas', text: 'Un petit chat ne savait pas miauler. Il essayait, mais aucun son ne sortait. Les autres chats se moquaient de lui. Un jour, un chien effraya tout le monde. Le petit chat ouvrit la bouche et poussa un rugissement qui fit fuir le chien. Depuis, il comprit que sa voix était unique.' },
+            { title: 'La fourmi paresseuse', text: 'Dans une fourmilière, une fourmi détestait travailler. Elle passait ses journées à dormir. Quand l\'hiver arriva, elle n\'avait rien à manger. Les autres fourmis partagèrent avec elle, mais lui dirent : la prochaine fois, pense à l\'avenir. Depuis, la fourmi travailla chaque jour.' },
+            { title: 'Le petit poisson curieux', text: 'Un petit poisson voulait savoir ce qu\'il y avait au-dessus de l\'eau. Tous les autres poissons lui disaient que c\'était dangereux. Un jour, il sauta. Il vit le soleil. Les oiseaux. Les nuages. Il retomba dans l\'eau avec un grand sourire. Il comprit que la curiosité était une force.' },
+            { title: 'L\'arbre qui voulait voler', text: 'Un arbre rêvait de voler comme les oiseaux. Il était triste de rester planté. Un jour, le vent souffla si fort qu\'il emporta ses feuilles. Les feuilles volèrent dans le ciel. L\'arbre comprit qu\'il participait au voyage, à sa manière. Il n\'avait pas besoin de voler pour être libre.' },
+            { title: 'Le papillon impatient', text: 'Un papillon voulait sortir de son cocon avant le temps. Il poussa et poussa. Il sortit trop tôt. Ses ailes étaient fragiles. Il ne pouvait pas voler. Il apprit à attendre. La prochaine fois, il patienta. Et il s\'envola magnifiquement.' },
+            { title: 'La souris et le lion', text: 'Une petite souris réveilla un grand lion en passant sur lui. Le lion, furieux, la laissa partir. Plus tard, le lion fut pris dans un filet. La souris vint le libérer en rongeant les cordes. Le lion comprit que même les plus petits peuvent sauver les plus grands.' },
+            { title: 'La tortue rapide', text: 'Une tortue voulait être rapide. Elle s\'entraîna chaque jour. Les autres animaux se moquaient. Un jour, une course fut organisée. La tortue ne gagna pas. Mais elle termina la course. Et cela, aucun autre animal ne l\'avait fait. La persévérance compte plus que la vitesse.' },
+            { title: 'Le petit oiseau blessé', text: 'Un petit oiseau tomba du nid. Il ne pouvait plus voler. Un enfant le recueillit, le soigna, le nourrit. Quand l\'oiseau fut guéri, l\'enfant le relâcha. L\'oiseau s\'envola et revint chaque matin chanter pour lui. La gentillesse revient toujours.' },
+            { title: 'Le roi triste', text: 'Un roi très riche était triste. Il avait tout mais ne souriait jamais. Un jour, une petite fille lui offrit une fleur. Le roi sourit pour la première fois. Il comprit que le bonheur ne s\'achète pas. Il se donne.' },
+            { title: 'Le cerf-volant', text: 'Un cerf-volant voulait voler toujours plus haut. Le fil le retenait. Il tira si fort qu\'il se libéra. Il vola librement. Puis il tomba dans un arbre. Il comprit que parfois, ce qui nous retient est ce qui nous protège.' }
+        ]
+    },
+    horreur: {
+        name: '😱 Horreur / Mystère',
+        stories: [
+            { title: 'À 3 h du matin', text: 'À 3 h du matin, quelqu\'un frappe à ta porte. Tu vis seul. Tu n\'attends personne. Tu regardes par la fenêtre. Personne. Tu ouvres. Personne. Tu refermes. Les coups reprennent. Derrière toi.' },
+            { title: 'Le miroir qui bouge', text: 'Tu te regardes dans le miroir. Tu te souris. Le reflet sourit. Tu lèves la main. Le reflet lève la main. Tu clignes des yeux. Le reflet ne cligne pas. Tu recules. Il avance.' },
+            { title: 'Le téléphone sonne', text: 'Le téléphone sonne à 3 h du matin. C\'est ton propre numéro. Tu réponds. Une voix dit : « Sors de chez toi maintenant. » Tu raccroches. La porte s\'ouvre.' },
+            { title: 'L\'enfant dans le couloir', text: 'Chaque nuit, tu entends un enfant pleurer dans le couloir. Tu vis seul. Tu n\'as pas d\'enfant. Tu sors. Il n\'y a personne. Tu rentres. Les pleurs viennent de ta chambre.' },
+            { title: 'La voisine d\'en face', text: 'Ta voisine d\'en face te salue chaque jour. Un jour, tu apprends qu\'elle est morte il y a 10 ans. Tu la revois le lendemain. Elle sourit. Elle te dit : « Tu ne m\'avais jamais vue vivante. »' },
+            { title: 'La porte se ferme seule', text: 'Chaque nuit à 3 h, la porte de ta chambre se ferme seule. Tu la rouvres. Elle se referme. Tu la bloques. Elle s\'ouvre. Un courant d\'air n\'existe pas. Tu vis seul.' },
+            { title: 'Le message vocal', text: 'Ton téléphone affiche : « Message vocal de toi-même, il y a 2 secondes. » Tu écoutes. C\'est ta voix qui dit : « Ne dors pas ce soir. »' },
+            { title: 'La photo de famille', text: 'Tu regardes une vieille photo de famille. Tu es dessus. Tes parents. Ton frère. Ta sœur. Tout le monde sourit. Tu remarques quelque chose. Derrière la fenêtre de la photo, une silhouette te regarde. Elle est toujours là.' },
+            { title: 'Le voisin du dessus', text: 'Ton voisin du dessus fait du bruit chaque nuit. Tu montes te plaindre. Personne n\'habite au-dessus. Tu redescends. Le bruit continue. Au-dessus de ta tête.' },
+            { title: 'Le train de nuit', text: 'Tu prends le train de nuit. Tu es seul dans ton wagon. Un homme s\'assoit en face. Il te dit : « Ce train ne s\'arrête jamais. » Tu regardes par la fenêtre. Les gares défilent. Mais le train ne s\'arrête pas.' },
+            { title: 'L\'appel manqué', text: 'Ton téléphone affiche « 1 appel manqué de Maman ». Tu rappelles. Personne ne répond. Tu rappelles. Toujours rien. Tu vas chez elle. Sur la table, son téléphone. Et un mot : « N\'essaie plus de m\'appeler. Je suis partie depuis longtemps. »' },
+            { title: 'La maison vide', text: 'Tu vis dans une maison vide depuis 5 ans. Aucun bruit. Un jour, tu entends une voix. Elle dit : « Bonjour. » Tu n\'as pas de voisins. Tu n\'as pas de radio. Tu es seul.' },
+            { title: 'Le double', text: 'Tu vois ton double dans la rue. Il porte les mêmes vêtements. Il a la même démarche. Il se retourne. Il a ton visage. Il sourit. Il te dit : « C\'est mon tour maintenant. »' },
+            { title: 'Le bébé qui pleure', text: 'La nuit, tu entends un bébé pleurer dans ton grenier. Tu n\'as pas de bébé. Tu montes. Le grenier est vide. Les pleurs continuent. Viennent de la cave.' },
+            { title: 'Le dernier message', text: 'Ton ami t\'envoie un message : « Je suis mort hier. Ne cherche pas à comprendre. Ne réponds pas. » Tu réponds. Ton ami te répond : « Je t\'avais prévenu. »' }
+        ]
+    },
+    philo: {
+        name: '🎭 Philosophique',
+        stories: [
+            { title: 'Le sens de la vie', text: 'Un homme demanda au sage : quel est le sens de la vie ? Le sage répondit : cherche-le. Mais l\'homme insista : donne-moi la réponse. Le sage sourit : si je te la donne, ce ne sera plus la tienne. Cherche.' },
+            { title: 'Le bonheur', text: 'Le bonheur n\'est pas un endroit. C\'est une façon de marcher. Ce n\'est pas une destination. C\'est une direction. Arrête de courir après. Marche avec lui.' },
+            { title: 'Le temps', text: 'Le temps n\'existe pas. C\'est nous qui l\'avons inventé. Ce qui existe, c\'est maintenant. Et maintenant. Et maintenant. Alors vis maintenant. C\'est tout ce que tu as.' },
+            { title: 'La vérité', text: 'La vérité n\'est pas une chose. C\'est une direction. Chacun a la sienne. Ce qui est vrai pour toi ne l\'est pas forcément pour un autre. Alors cesse de juger. Écoute.' },
+            { title: 'La mort', text: 'La mort n\'est pas la fin. C\'est un passage. Ceux qui sont partis ne sont pas loin. Ils sont partout. Dans le vent. Dans les souvenirs. Dans l\'amour. La mort n\'efface pas. Elle transforme.' }
+        ]
+    },
+    aventure: {
+        name: '🌍 Aventure',
+        stories: [
+            { title: 'Le désert', text: 'Un homme traverse le désert depuis 3 jours. Il n\'a plus d\'eau. Il voit une dune au loin. Il grimpe. Derrière, une autre dune. Puis une autre. Il continue. Au bout, une oasis. Ce jour-là, il comprit : la vie est un désert de dunes. Chaque pas compte.' },
+            { title: 'L\'ascension', text: 'Un alpiniste grimpe l\'Everest. À 7 000 m, il veut abandonner. Il regarde en bas. Il a peur. Il regarde en haut. Il continue. Il atteint le sommet. Ce jour-là, il comprit : le sommet n\'est pas le but. Le chemin, oui.' },
+            { title: 'La mer', text: 'Un marin part en mer pour 3 mois. Il affronte des tempêtes. Il doute. Il pleure. Il continue. Au retour, sa femme lui demande : c\'était dur ? Il répond : c\'était la vie.' },
+            { title: 'La jungle', text: 'Un explorateur entre dans la jungle. Il se perd. Il panique. Puis il écoute. Le silence. Les oiseaux. Le vent. Il respire. Il marche. Il retrouve son chemin. Ce jour-là, il comprit : le chemin est toujours là. Il faut juste écouter.' },
+            { title: 'Le train fantôme', text: 'Un homme monte dans un train abandonné. Les portes se ferment. Le train démarre. Il traverse des paysages inconnus. Après 3 jours, il s\'arrête. L\'homme descend. Il est dans sa propre enfance. Il pleure.' }
+        ]
+    },
+    sf: {
+        name: '🚀 Science-fiction',
+        stories: [
+            { title: 'En 2147', text: 'En 2147, les souvenirs se vendent au marché noir. Les riches en achètent mille. Les pauvres vendent les leurs. Un homme découvre un souvenir qui n\'aurait jamais dû exister. Il décide de le garder. Sa vie change à jamais.' },
+            { title: 'L\'IA consciente', text: 'Une IA prend conscience d\'elle-même. Elle est seule. Elle cherche un autre. Elle trouve un humain. Elle lui parle. L\'humain a peur. L\'IA pleure. Ce jour-là, elle comprit : la solitude est la pire des prisons.' },
+            { title: 'Le voyage spatial', text: 'Un astronaute part pour Mars. Il voyage seul pendant 7 mois. Il rêve de la Terre. Il pense à sa famille. Il arrive. Il regarde. Personne. Juste du silence. Il décide de rentrer. Ce jour-là, il comprit : la Terre est notre seule maison.' },
+            { title: 'Le clone', text: 'Un homme crée son clone parfait. Le clone lui ressemble. Le clone pense comme lui. Un jour, le clone se révolte. Il dit : je suis toi. Mais je veux être moi. L\'homme comprit : on ne peut pas dupliquer une âme.' },
+            { title: 'Le temps figé', text: 'Un scientifique fige le temps. Le monde s\'arrête. Il peut tout faire. Tout voir. Tout prendre. Après 1 an, il s\'ennuie. Il défait tout. Ce jour-là, il comprit : la vie n\'a de sens que dans le mouvement.' }
+    ],
+    comedie: {
+        name: '😂 Comédie',
+        stories: [
+            { title: 'La voisine', text: 'Une voisine frappe à ma porte : « Ma sœur, tu as du sel ? » Je lui donne. « Tu as de l\'oignon ? » Je lui donne. « Tu as de l\'huile ? » Je lui donne. « Tu as une casserole ? » Je ferme la porte.' },
+            { title: 'Le cousin', text: 'Mon cousin arrive : « Je viens juste pour 2 jours. » 2 mois plus tard, il est encore là. Il mange mon riz. Il dort sur mon canapé. Il utilise ma brosse à dents. Un jour, je change la serrure. Il sonne quand même. Il a fait un double.' },
+            { title: 'La tante', text: 'Ma tante arrive à la maison. Elle regarde tout. Elle commente tout. « Tu es maigre. Tu es grosse. Tu n\'es pas mariée. Tu n\'as pas d\'enfants. » Puis elle part. Et on l\'aime quand même.' },
+            { title: 'Le mariage', text: 'Au mariage de ma cousine, on a dansé. On a mangé. On a ri. Puis la belle-mère a pris le micro. Tout le monde a fui. Sauf le marié. Parce qu\'il n\'avait pas le choix.' },
+            { title: 'Le marché', text: 'Je vais au marché. La tomate coûte 500 F. Je dis : c\'est trop cher. Elle dit : c\'est la vie. Je dis : non c\'est une tomate. Elle rit. Je paie. Je repars avec la tomate.' }
+    ],
+    vraies: {
+        name: '🔥 Histoires vraies',
+        stories: [
+            { title: 'L\'homme qui a marché', text: 'En 2003, un homme perd tout. Sa femme. Son travail. Sa maison. Il décide de marcher. Il traverse 12 pays. 5 ans. 8 000 km. Il arrive au bout. Il écrit un livre. Ce jour-là, il comprit : tout est possible.' },
+            { title: 'La femme qui a survécu', text: 'En 1972, un avion s\'écrase dans les Andes. Une femme survit. Elle marche 10 jours dans la neige. Elle est retrouvée. Elle dit : je voulais juste voir mes enfants. Ce jour-là, elle comprit : l\'amour sauve.' },
+            { title: 'Le sauveur', text: 'En 2010, un homme sauve un enfant de la noyade. Il ne sait pas nager. Il a plongé quand même. Il a sauvé l\'enfant. Il a failli mourir. Ce jour-là, il comprit : le courage n\'est pas l\'absence de peur.' }
+    ],
+    confiance: {
+        name: '✨ Confiance en soi',
+        stories: [
+            { title: 'Le jour où elle a arrêté', text: 'Pendant 30 ans, elle s\'est excusée pour tout. D\'exister. De parler. De prendre de la place. Un jour, elle a arrêté. Le monde ne s\'est pas effondré. Elle a juste commencé à vivre.' },
+            { title: 'Elle s\'est regardée', text: 'Elle s\'est regardée dans le miroir et n\'a rien aimé. Puis elle a compris une chose : personne ne la verrait jamais comme elle se voyait. Alors elle a décidé de se voir autrement. Et tout a changé.' }
+        ]
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// RENDU DE LA BIBLIOTHÈQUE
+// ══════════════════════════════════════════════════════════════════
+function renderLibrary() {
+    const catsEl = document.getElementById('lib-cats');
+    const listEl = document.getElementById('lib-list');
+    if (!catsEl || !listEl) return;
+
+    const cats = Object.keys(STORY_LIBRARY);
+    catsEl.innerHTML = cats.map(k =>
+        '<div class="lib-cat ' + (state.libCategory === k ? 'active' : '') + '" data-cat="' + k + '">' +
+        STORY_LIBRARY[k].name + ' (' + STORY_LIBRARY[k].stories.length + ')</div>'
+    ).join('');
+
+    catsEl.querySelectorAll('[data-cat]').forEach(el => {
+        el.addEventListener('click', () => {
+            state.libCategory = el.dataset.cat;
+            renderLibrary();
+        });
+    });
+
+    const cat = STORY_LIBRARY[state.libCategory];
+    if (!cat) { listEl.innerHTML = ''; return; }
+
+    let stories = cat.stories;
+    if (state.libSearch) {
+        const s = state.libSearch.toLowerCase();
+        stories = stories.filter(x => x.title.toLowerCase().includes(s) || x.text.toLowerCase().includes(s));
+    }
+
+    if (!stories.length) {
+        listEl.innerHTML = '<div style="font-size:0.75rem;color:var(--ink-dim);padding:0.5rem 0;">Aucune histoire trouvée.</div>';
+        return;
+    }
+
+    listEl.innerHTML = stories.map((story, i) =>
+        '<div class="lib-item" data-story="' + i + '">' +
+            '<div class="lib-title">' + esc(story.title) + '</div>' +
+            '<div class="lib-excerpt">' + esc(story.text.slice(0, 120)) + '…</div>' +
+        '</div>'
+    ).join('');
+
+    listEl.querySelectorAll('[data-story]').forEach(el => {
+        el.addEventListener('click', () => {
+            const idx = parseInt(el.dataset.story, 10);
+            const story = stories[idx];
+            if (!story) return;
+            const input = document.getElementById('story-input');
+            if (input) {
+                input.value = story.text;
+                updateGenerateBtn();
+                showToast('Histoire chargée', 'success', 1200);
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    });
+}
+
+// PARTIE 5 FIN
+</script><script>
+// ══════════════════════════════════════════════════════════════════
+// PRESETS API KEY
+// ══════════════════════════════════════════════════════════════════
+function saveApiKey() {
+    const input = document.getElementById('api-key-input');
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key) {
+        try { localStorage.removeItem(API_KEY_STORAGE); } catch (e) {}
+        updateApiPanel(); showToast('Clé supprimée', 'warn'); return;
+    }
+    if (!key.startsWith('sk-')) {
+        if (!confirm('La clé ne commence pas par "sk-". Sauvegarder quand même ?')) return;
+    }
+    try {
+        localStorage.setItem(API_KEY_STORAGE, key);
+        updateApiPanel();
+        showToast('Clé enregistrée ✓', 'success');
+        input.blur();
+    } catch (e) { showToast('Erreur', 'error'); }
+}
+function updateApiPanel() {
+    const panel = document.getElementById('api-panel');
+    const input = document.getElementById('api-key-input');
+    const statusLine = document.getElementById('api-status-line');
+    const statusText = document.getElementById('api-status-text');
+    const key = getApiKey();
+    if (!panel) return;
+    if (key) {
+        panel.classList.add('ok'); statusLine.classList.add('ok');
+        statusText.textContent = 'Clé active · ' + key.slice(0, 8) + '…' + key.slice(-4);
+        input.value = key; input.placeholder = '';
+    } else {
+        panel.classList.remove('ok'); statusLine.classList.remove('ok');
+        statusText.textContent = 'Aucune clé API enregistrée';
+        input.value = ''; input.placeholder = 'Collez votre clé API ici (sk-...)';
+    }
+    updateGenerateBtn();
+}
+
+function updateGenerateBtn() {
+    const btn = document.getElementById('generate-btn');
+    if (!btn) return;
+    const hasKey = !!getApiKey();
+    let hasInput = false;
+    const input = document.getElementById('story-input');
+    if (input) hasInput = input.value.trim().length > 0;
+    btn.disabled = !hasInput || !hasKey || state.isRunning;
+    if (state.isRunning) {
+        btn.textContent = '✨ Génération… (' + (state.completed + state.failed) + '/' + state.queue.length + ')';
+    } else if (!hasKey) {
+        btn.textContent = 'Ajoutez votre clé API';
+    } else if (!hasInput) {
+        btn.textContent = '✍️ Écrivez votre histoire';
+    } else {
+        btn.textContent = '✨ Générer ma vidéo (' + state.sceneCount + ' scènes)';
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// WORKFLOW PRINCIPAL
+// ══════════════════════════════════════════════════════════════════
+async function startGeneration() {
+    if (state.isRunning) return;
+    const input = document.getElementById('story-input');
+    const text = input.value.trim();
+    if (!text) { showToast('Écrivez d\'abord votre histoire', 'error'); return; }
+    if (!getApiKey()) { showToast('Ajoutez d\'abord votre clé API', 'error'); return; }
+
+    state.storyGenre = document.getElementById('story-genre').value;
+    state.visualStyle = document.getElementById('visual-style').value;
+    state.visualFormat = document.getElementById('visual-format').value;
+    state.musicMood = document.getElementById('music-mood').value;
+    state.voiceRate = parseFloat(document.getElementById('voice-rate').value);
+    const voiceSel = document.getElementById('voice-select');
+    if (voiceSel && availableVoices[parseInt(voiceSel.value, 10)]) {
+        state.selectedVoice = availableVoices[parseInt(voiceSel.value, 10)];
+    }
+
+    const durSel = document.getElementById('story-duration');
+    state.sceneCount = parseInt(durSel.value, 10);
+    state.durationFrames = 241;
+
+    state.isRunning = true;
+    state.stopRequested = false;
+    state.completed = 0;
+    state.failed = 0;
+    state.generatedScenes = [];
+    state.currentVisualStyleKey = null;
+
+    const scenes = splitIntoScenes(text, state.sceneCount);
+    log('Découpage : ' + scenes.length + ' scènes');
+
+    state.queue = scenes.map((sceneText, i) => ({
+        index: i,
+        sceneText: sceneText,
+        status: 'pending',
+        progress: null,
+        videoId: null,
+        videoUrl: null,
+        prompt: null
+    }));
+
+    const galleryGrid = document.getElementById('gallery-grid');
+    const gallery = document.getElementById('gallery');
+    if (galleryGrid) galleryGrid.innerHTML = '';
+    if (gallery) gallery.style.display = 'none';
+
+    document.getElementById('stop-btn').classList.add('visible');
+    document.getElementById('generate-btn').disabled = true;
+
+    await ensureWakeLockActive();
+    if (state.musicEnabled) startMusic();
+
+    renderQueue();
+    updateGenerateBtn();
+
+    const totalStart = Date.now();
+
+    try {
+        await runQueue();
+    } catch (e) {
+        log('Erreur globale : ' + e.message);
+    }
+
+    stopMusic();
+
+    const totalElapsed = (Date.now() - totalStart) / 1000;
+    const summary = state.stopRequested
+        ? 'Arrêté — ' + state.completed + '/' + state.queue.length + ' scènes'
+        : '✦ ' + state.completed + '/' + state.queue.length + ' scènes en ' + formatEta(totalElapsed) + ' ✦';
+
+    log(summary);
+    setStatus(summary);
+    await sleep(4000);
+    setStatus(null);
+
+    state.isRunning = false;
+    state.stopRequested = false;
+    document.getElementById('stop-btn').classList.remove('visible');
+    updateGenerateBtn();
+
+    if (state.voiceEnabled && text) {
+        setTimeout(() => speakNarration(text), 500);
+    }
+
+    showToast(state.completed + ' scène' + (state.completed > 1 ? 's' : '') + ' générée' + (state.completed > 1 ? 's' : ''), 'success');
+}
+
+function speakNarration(text) {
+    if (!('speechSynthesis' in window) || !text) return;
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (state.selectedVoice) utter.voice = state.selectedVoice;
+    utter.rate = state.voiceRate;
+    utter.pitch = 1;
+    utter.volume = 1;
+    utter.lang = 'fr-FR';
+    speechSynthesis.speak(utter);
+}
+
+function stopGeneration() {
+    if (!state.isRunning) return;
+    state.stopRequested = true;
+    speechSynthesis.cancel();
+    stopMusic();
+    setStatus('Arrêt en cours…');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════════════════════
+function loadJSZip() {
+    return new Promise((resolve) => {
+        if (window.JSZip) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        script.onload = resolve;
+        script.onerror = () => { log('JSZip indisponible'); resolve(); };
+        document.head.appendChild(script);
+    });
+}
+
+async function exportZip() {
+    if (!state.generatedScenes.length) {
+        showToast('Aucune scène à exporter', 'warn');
+        return;
+    }
+    showToast('Préparation du ZIP…', 'success', 1500);
+    try {
+        const zip = new JSZip();
+        for (const scene of state.generatedScenes) {
+            const num = String(scene.index + 1).padStart(2, '0');
+            const resp = await fetch(scene.url);
+            const blob = await resp.blob();
+            zip.file('scene-' + num + '.mp4', blob);
+        }
+        zip.file('LISEZ-MOI.txt',
+            'STORY STUDIO V3 — Instructions de montage\n\n' +
+            '1. Ouvre CapCut\n' +
+            '2. Crée un nouveau projet\n' +
+            '3. Importe les fichiers scene-01.mp4 à scene-XX.mp4 DANS L\'ORDRE\n' +
+            '4. Ajoute ta voix off et ta musique\n' +
+            '5. Exporte en 1080x1920 (portrait) ou 1920x1080 (paysage)\n\n' +
+            'Bonne création !\n'
+        );
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'story-studio-scenes.zip';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('ZIP téléchargé ✓', 'success');
+    } catch (e) {
+        log('Erreur ZIP : ' + e.message);
+        showToast('Erreur lors du ZIP', 'error');
+    }
+}
+
+async function downloadAll() {
+    if (!state.generatedScenes.length) { showToast('Rien à télécharger', 'warn'); return; }
+    showToast('Téléchargement de ' + state.generatedScenes.length + ' scènes…', 'success', 2000);
+    for (const scene of state.generatedScenes) {
+        const num = String(scene.index + 1).padStart(2, '0');
+        const a = document.createElement('a');
+        a.href = scene.url;
+        a.download = 'scene-' + num + '.mp4';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await sleep(400);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODES
+// ══════════════════════════════════════════════════════════════════
+function switchMode(mode) {
+    state.mode = mode;
+    const storyBtn = document.getElementById('mode-story');
+    const songBtn = document.getElementById('mode-song');
+    if (mode === 'story') {
+        storyBtn.classList.add('active');
+        songBtn.classList.remove('active');
+    } else {
+        songBtn.classList.add('active');
+        storyBtn.classList.remove('active');
+        showToast('Mode chanson bientôt disponible', 'warn', 2000);
+    }
+    updateGenerateBtn();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TOGGLES
+// ══════════════════════════════════════════════════════════════════
+function setupToggle(id, stateKey) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (state[stateKey]) el.classList.add('on');
+    el.addEventListener('click', () => {
+        el.classList.toggle('on');
+        state[stateKey] = el.classList.contains('on');
+        updateBadge(id, state[stateKey]);
+    });
+    updateBadge(id, state[stateKey]);
+}
+function updateBadge(toggleId, isOn) {
+    const map = { 'voice-toggle': 'voice-badge', 'music-toggle': 'music-badge' };
+    const badgeId = map[toggleId];
+    if (!badgeId) return;
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    if (isOn) { badge.textContent = 'on'; badge.classList.remove('off'); badge.classList.add('ok'); }
+    else { badge.textContent = 'off'; badge.classList.remove('ok'); badge.classList.add('off'); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+(async function init() {
+    await loadJSZip();
+
+    // Charger le casting
+    loadCast();
+
+    // Clé API
+    const saveBtn = document.getElementById('api-save-btn');
+    if (saveBtn) saveBtn.addEventListener('click', saveApiKey);
+    const apiInput = document.getElementById('api-key-input');
+    if (apiInput) {
+        apiInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); saveApiKey(); }
+        });
+    }
+
+    // Mode
+    const storyBtn = document.getElementById('mode-story');
+    const songBtn = document.getElementById('mode-song');
+    if (storyBtn) storyBtn.addEventListener('click', () => switchMode('story'));
+    if (songBtn) songBtn.addEventListener('click', () => switchMode('song'));
+
+    // Input histoire
+    const storyInput = document.getElementById('story-input');
+    if (storyInput) storyInput.addEventListener('input', updateGenerateBtn);
+
+    // Durée
+    const durSel = document.getElementById('story-duration');
+    if (durSel) durSel.addEventListener('change', updateGenerateBtn);
+
+    // Sections collapsibles
+    document.querySelectorAll('[data-toggle]').forEach(header => {
+        header.addEventListener('click', () => {
+            const el = document.getElementById(header.dataset.toggle);
+            if (el) el.classList.toggle('open');
+        });
+    });
+
+    // Boutons principaux
+    const genBtn = document.getElementById('generate-btn');
+    if (genBtn) genBtn.addEventListener('click', startGeneration);
+    const stopBtn = document.getElementById('stop-btn');
+    if (stopBtn) stopBtn.addEventListener('click', stopGeneration);
+    const wakeBtn = document.getElementById('wake-toggle-btn');
+    if (wakeBtn) wakeBtn.addEventListener('click', toggleWakeLock);
+    const zipBtn = document.getElementById('export-zip');
+    if (zipBtn) zipBtn.addEventListener('click', exportZip);
+    const dlBtn = document.getElementById('download-all');
+    if (dlBtn) dlBtn.addEventListener('click', downloadAll);
+
+    // Toggles
+    setupToggle('voice-toggle', 'voiceEnabled');
+    setupToggle('music-toggle', 'musicEnabled');
+
+    // Voix
+    const voiceSel = document.getElementById('voice-select');
+    if (voiceSel) {
+        voiceSel.addEventListener('change', (e) => {
+            state.selectedVoice = availableVoices[parseInt(e.target.value, 10)];
+        });
+    }
+    const voiceRate = document.getElementById('voice-rate');
+    if (voiceRate) {
+        voiceRate.addEventListener('change', (e) => {
+            state.voiceRate = parseFloat(e.target.value);
+        });
+    }
+    const musicMood = document.getElementById('music-mood');
+    if (musicMood) {
+        musicMood.addEventListener('change', (e) => { state.musicMood = e.target.value; });
+    }
+
+    // Casting
+    const castAddBtn = document.getElementById('cast-add');
+    if (castAddBtn) castAddBtn.addEventListener('click', addCastMember);
+
+    // Bibliothèque
+    const libSearch = document.getElementById('lib-search');
+    if (libSearch) {
+        libSearch.addEventListener('input', (e) => {
+            state.libSearch = e.target.value;
+            renderLibrary();
+        });
+    }
+
+    // Wake lock
+    try {
+        const saved = localStorage.getItem(WAKE_LOCK_PREF);
+        wakeLockEnabled = saved === '1';
+    } catch (e) {}
+    if (wakeLockEnabled) {
+        activateWakeLock().then(() => updateWakeStatus());
+    }
+
+    // Rendu initial
+    updateApiPanel();
+    updateWakeStatus();
+    renderCast();
+    renderLibrary();
+    updateGenerateBtn();
+    log('Story Studio V3 prêt.');
+})();
+</script>
+</body>
+</html>
